@@ -2,8 +2,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' || window.location.protocol === 'file:';
     const apiUrl = isLocal ? 'http://127.0.0.1:8000' : '';
 
+    const modal = document.getElementById('editModal');
+    const editForm = document.getElementById('edit-form');
+    const closeModal = document.querySelector('.close-button');
+
+    let allLogs = []; // Store all logs to find the one being edited
+
+    closeModal.onclick = () => modal.style.display = "none";
+    window.onclick = (event) => {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    };
+
     function createChart(ctx, label, labels, data) {
-        new Chart(ctx, {
+        if (window.myCharts && window.myCharts[ctx.canvas.id]) {
+            window.myCharts[ctx.canvas.id].destroy();
+        }
+        window.myCharts = window.myCharts || {};
+        window.myCharts[ctx.canvas.id] = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
@@ -55,39 +72,92 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${log.visceral_fat || '-'}</td>
                 <td>${log.sleep || '-'}</td>
                 <td>${log.notes || '-'}</td>
+                <td><button class="edit-btn" data-id="${log.id}">Edit</button></td>
             `;
+        });
+
+        document.querySelectorAll('.edit-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const logId = e.target.dataset.id;
+                const logToEdit = allLogs.find(log => log.id == logId);
+                if (logToEdit) {
+                    document.getElementById('edit-log-id').value = logToEdit.id;
+                    document.getElementById('edit-weight').value = logToEdit.weight;
+                    document.getElementById('edit-body_fat').value = logToEdit.body_fat;
+                    document.getElementById('edit-muscle').value = logToEdit.muscle;
+                    document.getElementById('edit-visceral_fat').value = logToEdit.visceral_fat;
+                    document.getElementById('edit-sleep').value = logToEdit.sleep;
+                    document.getElementById('edit-notes').value = logToEdit.notes;
+                    modal.style.display = "block";
+                }
+            });
         });
     }
 
-    fetch(`${apiUrl}/api/logs`)
+    function fetchData() {
+        fetch(`${apiUrl}/api/logs`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(logs => {
+                allLogs = logs; // Store for editing
+                const labels = logs.map(log => log.date);
+
+                const charts = {
+                    weight: { ctx: 'weightChart', label: 'Weight (kg)', data: logs.map(l => l.weight) },
+                    bodyFat: { ctx: 'bodyFatChart', label: 'Body Fat (%)', data: logs.map(l => l.body_fat) },
+                    muscle: { ctx: 'muscleChart', label: 'Muscle (%)', data: logs.map(l => l.muscle) },
+                    visceralFat: { ctx: 'visceralFatChart', label: 'Visceral Fat', data: logs.map(l => l.visceral_fat) },
+                    sleep: { ctx: 'sleepChart', label: 'Sleep (hours)', data: logs.map(l => l.sleep) }
+                };
+
+                for (const key in charts) {
+                    const chart = charts[key];
+                    const ctx = document.getElementById(chart.ctx).getContext('2d');
+                    createChart(ctx, chart.label, labels, chart.data);
+                }
+
+                populateTable(logs);
+            })
+            .catch(error => {
+                console.error('Error fetching log data:', error);
+                const tableBody = document.querySelector('#logsTable tbody');
+                tableBody.innerHTML = `<tr><td colspan="9" style="text-align:center;">Could not load data.</td></tr>`;
+            });
+    }
+
+    editForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const logId = document.getElementById('edit-log-id').value;
+        const updatedData = {
+            weight: document.getElementById('edit-weight').value || null,
+            body_fat: document.getElementById('edit-body_fat').value || null,
+            muscle: document.getElementById('edit-muscle').value || null,
+            visceral_fat: document.getElementById('edit-visceral_fat').value || null,
+            sleep: document.getElementById('edit-sleep').value || null,
+            notes: document.getElementById('edit-notes').value || null,
+        };
+
+        fetch(`${apiUrl}/api/logs/${logId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedData)
+        })
         .then(response => {
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                throw new Error('Failed to update log');
             }
-            return response.json();
-        })
-        .then(logs => {
-            const labels = logs.map(log => log.date);
-
-            const charts = {
-                weight: { ctx: 'weightChart', label: 'Weight (kg)', data: logs.map(l => l.weight) },
-                bodyFat: { ctx: 'bodyFatChart', label: 'Body Fat (%)', data: logs.map(l => l.body_fat) },
-                muscle: { ctx: 'muscleChart', label: 'Muscle (%)', data: logs.map(l => l.muscle) },
-                visceralFat: { ctx: 'visceralFatChart', label: 'Visceral Fat', data: logs.map(l => l.visceral_fat) },
-                sleep: { ctx: 'sleepChart', label: 'Sleep (hours)', data: logs.map(l => l.sleep) }
-            };
-
-            for (const key in charts) {
-                const chart = charts[key];
-                const ctx = document.getElementById(chart.ctx).getContext('2d');
-                createChart(ctx, chart.label, labels, chart.data);
-            }
-
-            populateTable(logs);
+            modal.style.display = "none";
+            fetchData(); // Refresh data on the page
         })
         .catch(error => {
-            console.error('Error fetching log data:', error);
-            const tableBody = document.querySelector('#logsTable tbody');
-            tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Could not load data.</td></tr>`;
+            console.error('Error updating log:', error);
+            alert('Failed to save changes.');
         });
+    });
+
+    fetchData();
 });
