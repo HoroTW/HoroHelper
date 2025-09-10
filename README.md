@@ -72,3 +72,17 @@ uvicorn backend.main:app --reload
 2. Open `frontend/index.html` in your browser.
   - Form posts data to http://host/api/logs
   - Fetches last log from http://host/api/logs/last for pre-filling.
+
+
+## For local development without docker:
+```bash
+# From the backend directory
+DATABASE_URL=sqlite:///../data/database.db python -m uvicorn main:app --reload --port 8000
+# the frontend files can be opened directly in a browser
+```
+
+## Using Docker
+```bash
+# From the project root
+docker-compose up --build
+```
