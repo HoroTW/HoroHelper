@@ -15,7 +15,7 @@ This project uses a **Python FastAPI backend** with an **SQLite database** and a
 - Easy integration with Metabase / Grafana for visualization.
 
 
-## Currently tracked fileds:
+## Currently tracked fields:
 - Date (auto-filled) (required)
 - Time (auto-filled) (required)
 - Weight (numeric, e.g. 70.5) kg
