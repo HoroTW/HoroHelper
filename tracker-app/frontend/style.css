@@ -49,6 +49,27 @@ h1 {
     color: #B794F4;
 }
 
+.datetime-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+input[type="date"], input[type="time"] {
+    background-color: #1A202C;
+    color: #E2E8F0;
+    border: 1px solid #4A5568;
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 16px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
+
 .charts-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));

@@ -1,11 +1,19 @@
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('tracker-form');
     const messageEl = document.getElementById('message');
+    const dateInput = document.getElementById('current-date');
+    const timeInput = document.getElementById('current-time');
     
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' || window.location.protocol === 'file:';
     const apiUrl = isLocal ? 'http://127.0.0.1:8000' : '';
 
     const ITEM_HEIGHT = 20; // Corresponds to .roller-item height in CSS
+
+    function setCurrentDateTime() {
+        const now = new Date();
+        dateInput.value = now.toISOString().split('T')[0];
+        timeInput.value = now.toTimeString().split(' ')[0].substring(0, 5);
+    }
 
     function setupRollers() {
         document.querySelectorAll('.roller').forEach(roller => {
@@ -95,6 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    setCurrentDateTime();
     setupRollers();
 
     // Fetch the last log to pre-fill the form
@@ -137,6 +146,8 @@ document.addEventListener('DOMContentLoaded', () => {
             data.visceral_fat = visceralFatRoller.dataset.value;
         }
         data.notes = document.getElementById('notes').value;
+        data.date = dateInput.value;
+        data.time = timeInput.value;
 
         for (const key in data) {
             if (data[key] === '' || data[key] === 'undefined.undefined') {

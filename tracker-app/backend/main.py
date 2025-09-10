@@ -32,6 +32,8 @@ def get_all_logs(db: Session = Depends(get_db)):
 
 # Pydantic model for request body
 class LogCreate(BaseModel):
+    date: datetime.date | None = None
+    time: datetime.time | None = None
     weight: float | None = None
     body_fat: float | None = None
     muscle: float | None = None
@@ -42,9 +44,14 @@ class LogCreate(BaseModel):
 @app.post("/api/logs")
 def create_log(log: LogCreate, db: Session = Depends(get_db)):
     db_log = models.Log(
-        date=datetime.date.today(),
-        time=datetime.datetime.now().time(),
-        **log.dict()
+        date=log.date if log.date else datetime.date.today(),
+        time=log.time if log.time else datetime.datetime.now().time(),
+        weight=log.weight,
+        body_fat=log.body_fat,
+        muscle=log.muscle,
+        visceral_fat=log.visceral_fat,
+        sleep=log.sleep,
+        notes=log.notes
     )
     db.add(db_log)
     db.commit()
