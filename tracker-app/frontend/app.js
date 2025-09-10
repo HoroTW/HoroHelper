@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' || window.location.protocol === 'file:';
     const apiUrl = isLocal ? 'http://127.0.0.1:8000' : '';
 
-    const ITEM_HEIGHT = 30; // Corresponds to .roller-item height in CSS
+    const ITEM_HEIGHT = 20; // Corresponds to .roller-item height in CSS
 
     function setupRollers() {
         document.querySelectorAll('.roller').forEach(roller => {

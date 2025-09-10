@@ -18,6 +18,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Dependency to get DB session
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@app.get("/api/logs")
+def get_all_logs(db: Session = Depends(get_db)):
+    return db.query(models.Log).order_by(models.Log.id.asc()).all()
+
 # Pydantic model for request body
 class LogCreate(BaseModel):
     weight: float | None = None
@@ -26,14 +38,6 @@ class LogCreate(BaseModel):
     visceral_fat: int | None = None
     sleep: float | None = None
     notes: str | None = None
-
-# Dependency to get DB session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 @app.post("/api/logs")
 def create_log(log: LogCreate, db: Session = Depends(get_db)):
