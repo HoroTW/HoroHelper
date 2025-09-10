@@ -57,7 +57,7 @@ save: save-backend save-frontend
 transfer: transfer-backend transfer-frontend
 
 # Deploy everything: build, save, and transfer both images
-deploy: build save transfer
+deploy: transfer
     @echo "🎉 Deployment completed successfully for both services."
 
 # Clean up local tarballs
