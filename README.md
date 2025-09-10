@@ -29,7 +29,7 @@ This project uses a **Python FastAPI backend** with an **SQLite database** and a
 
 ## 🗂 Project Structure
 ```
-tracker-app/
+/
 ├── backend/
 │ ├── main.py # FastAPI backend
 │ ├── models.py # SQLAlchemy models
