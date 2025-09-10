@@ -29,6 +29,12 @@ h1 {
     margin-bottom: 15px;
 }
 
+.form-group.roller-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 label {
     display: block;
     margin-bottom: 5px;
@@ -50,46 +56,74 @@ input:focus, textarea:focus {
     outline: none;
 }
 
-.compound-spinner, .number-picker {
+.compound-roller {
     display: flex;
     align-items: center;
-    gap: 5px;
+    justify-content: center;
+    gap: 5px; /* Reduced gap */
 }
 
-.number-picker {
+.roller {
+    height: 90px; /* Reduced height */
+    width: 50px; /* Reduced width */
+    overflow: hidden;
+    position: relative;
+    cursor: grab;
+    user-select: none;
     border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 5px;
-    display: inline-flex;
+    border-radius: 8px;
+    background: #f9f9f9;
+}
+
+.roller::before, .roller::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 30px; /* Reduced height of the faded area */
+    background: linear-gradient(to bottom, rgba(249,249,249,1) 0%, rgba(249,249,249,0) 100%);
+    z-index: 1;
+}
+
+.roller::before {
+    top: 0;
+}
+
+.roller::after {
+    bottom: 0;
+    background: linear-gradient(to top, rgba(249,249,249,1) 0%, rgba(249,249,249,0) 100%);
+}
+
+.roller-content {
+    display: flex;
+    flex-direction: column;
     align-items: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    will-change: transform; /* Performance optimization */
 }
 
-.spinner-btn {
-    background-color: #f0f0f0;
-    border: none;
+.roller-item {
+    height: 30px; /* Reduced height of each number item */
+    line-height: 30px; /* Match item height */
+    font-size: 20px; /* Reduced font size */
+    color: #aaa;
+    transition: color 0.3s;
+}
+
+.roller-item.active {
     color: #333;
-    font-size: 18px;
     font-weight: bold;
-    cursor: pointer;
-    width: 30px;
-    height: 30px;
-    border-radius: 4px;
-}
-
-.spinner-value {
-    width: 40px;
-    text-align: center;
-    border: none;
-    background: transparent;
-    font-size: 16px;
 }
 
 .separator {
-    font-size: 18px;
+    font-size: 20px; /* Reduced font size */
     font-weight: bold;
 }
 
-button {
+button[type="submit"] {
     width: 100%;
     padding: 12px;
     background-color: #007bff;
