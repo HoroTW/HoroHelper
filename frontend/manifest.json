@@ -1,0 +1,16 @@
+{
+  "name": "HoroHelper Tracker",
+  "short_name": "Tracker",
+  "description": "A self-hosted tracker app for logging structured data.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a0033",
+  "theme_color": "#2a004f",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
