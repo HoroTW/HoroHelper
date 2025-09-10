@@ -29,16 +29,20 @@ This project uses a **Python FastAPI backend** with an **SQLite database** and a
 
 ## 🗂 Project Structure
 ```
-/
+HoroHelper/
 ├── backend/
-│ ├── main.py # FastAPI backend
-│ ├── models.py # SQLAlchemy models
-│ ├── database.db # SQLite database (auto-created)
-│ └── requirements.txt # Python deps
+│   ├── main.py         # FastAPI backend
+│   ├── models.py       # SQLAlchemy models
+│   ├── Dockerfile      # Dockerfile for the backend
+│   └── requirements.txt  # Python deps
 ├── frontend/
-│ ├── index.html # Input form
-│ ├── style.css # Styling
-│ └── app.js # Frontend logic (fetch → API)
+│   ├── index.html      # Main tracker input form
+│   ├── stats.html      # Statistics page
+│   ├── style.css       # Shared styling
+│   ├── app.js          # JS for the tracker page
+│   ├── stats.js        # JS for the statistics page
+│   └── Dockerfile      # Dockerfile for the frontend
+├── docker-compose.yml  # Docker Compose file to orchestrate services
 └── README.md
 ```
 
@@ -50,39 +54,24 @@ This project uses a **Python FastAPI backend** with an **SQLite database** and a
 - Uvicorn
 - SQLAlchemy
 
-Install dependencies:
-```bash
-uv pip install -r backend/requirements.txt
-```
-
-Run the backend:
-```bash
-uvicorn backend.main:app --reload
-```
 ### Frontend
-- Any web server (or just open `frontend/index.html` in a browser).
-- Modern browser (for Fetch API).
+- Any modern web browser.
 
 ## Running the App
-1. Start the backend server:
+
+### Using Docker (Recommended)
+1. Make sure you have Docker and Docker Compose installed.
+2. From the `HoroHelper` project root, run:
     ```bash
-    cd backend
-    uvicorn main:app --reload
+    docker-compose up --build
     ```
-2. Open `frontend/index.html` in your browser.
-  - Form posts data to http://host/api/logs
-  - Fetches last log from http://host/api/logs/last for pre-filling.
+3. Open your browser and navigate to `http://localhost:8080`.
 
-
-## For local development without docker:
-```bash
-# From the backend directory
-DATABASE_URL=sqlite:///../data/database.db python -m uvicorn main:app --reload --port 8000
-# the frontend files can be opened directly in a browser
-```
-
-## Using Docker
-```bash
-# From the project root
-docker-compose up --build
-```
+### For local development without Docker:
+1. **Start the backend:** From the `backend` directory, run:
+    ```bash
+    # You might need to install dependencies from requirements.txt first
+    # pip install -r requirements.txt
+    DATABASE_URL=sqlite:///../data/database.db python -m uvicorn main:app --reload --port 8000
+    ```
+2. **Open the frontend:** Open the `frontend/index.html` file directly in your browser.
