@@ -71,8 +71,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${log.muscle || '-'}</td>
                 <td>${log.visceral_fat || '-'}</td>
                 <td>${log.sleep || '-'}</td>
+                <td>
+                    <button class="edit-btn" data-id="${log.id}">Edit</button>
+                    <button class="delete-btn" data-id="${log.id}">Delete</button>
+                </td>
                 <td>${log.notes || '-'}</td>
-                <td><button class="edit-btn" data-id="${log.id}">Edit</button></td>
             `;
         });
 
@@ -89,6 +92,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('edit-sleep').value = logToEdit.sleep;
                     document.getElementById('edit-notes').value = logToEdit.notes;
                     modal.style.display = "block";
+                }
+            });
+        });
+
+        document.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const logId = e.target.dataset.id;
+                if (confirm('Are you sure you want to delete this log entry?')) {
+                    fetch(`${apiUrl}/api/logs/${logId}`, {
+                        method: 'DELETE',
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to delete log');
+                        }
+                        fetchData(); // Refresh data on the page
+                    })
+                    .catch(error => {
+                        console.error('Error deleting log:', error);
+                        alert('Failed to delete log.');
+                    });
                 }
             });
         });

@@ -64,6 +64,16 @@ def update_log(log_id: int, log: LogCreate, db: Session = Depends(get_db)):
     db.refresh(db_log)
     return db_log
 
+@app.delete("/api/logs/{log_id}")
+def delete_log(log_id: int, db: Session = Depends(get_db)):
+    db_log = db.query(models.Log).filter(models.Log.id == log_id).first()
+    if db_log is None:
+        raise HTTPException(status_code=404, detail="Log not found")
+    
+    db.delete(db_log)
+    db.commit()
+    return {"ok": True}
+
 @app.get("/api/logs/last")
 def get_last_log(db: Session = Depends(get_db)):
     last_log = db.query(models.Log).order_by(models.Log.id.desc()).first()
