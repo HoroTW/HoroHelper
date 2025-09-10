@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Log Your Data</h1>
+        <form id="tracker-form">
+            <div class="form-group">
+                <label for="weight">Weight (kg)</label>
+                <div class="compound-spinner" data-field="weight">
+                    <div class="number-picker">
+                        <button type="button" class="spinner-btn minus">-</button>
+                        <input type="text" class="spinner-value" value="70" readonly data-part="int" min="0" max="200">
+                        <button type="button" class="spinner-btn plus">+</button>
+                    </div>
+                    <span class="separator">.</span>
+                    <div class="number-picker">
+                        <button type="button" class="spinner-btn minus">-</button>
+                        <input type="text" class="spinner-value" value="0" readonly data-part="dec" min="0" max="9">
+                        <button type="button" class="spinner-btn plus">+</button>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="body_fat">Body Fat (%)</label>
+                <div class="compound-spinner" data-field="body_fat">
+                    <div class="number-picker">
+                        <button type="button" class="spinner-btn minus">-</button>
+                        <input type="text" class="spinner-value" value="15" readonly data-part="int" min="0" max="100">
+                        <button type="button" class="spinner-btn plus">+</button>
+                    </div>
+                    <span class="separator">.</span>
+                    <div class="number-picker">
+                        <button type="button" class="spinner-btn minus">-</button>
+                        <input type="text" class="spinner-value" value="0" readonly data-part="dec" min="0" max="9">
+                        <button type="button" class="spinner-btn plus">+</button>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="muscle">Muscle (%)</label>
+                <div class="compound-spinner" data-field="muscle">
+                    <div class="number-picker">
+                        <button type="button" class="spinner-btn minus">-</button>
+                        <input type="text" class="spinner-value" value="40" readonly data-part="int" min="0" max="100">
+                        <button type="button" class="spinner-btn plus">+</button>
+                    </div>
+                    <span class="separator">.</span>
+                    <div class="number-picker">
+                        <button type="button" class="spinner-btn minus">-</button>
+                        <input type="text" class="spinner-value" value="0" readonly data-part="dec" min="0" max="9">
+                        <button type="button" class="spinner-btn plus">+</button>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="visceral_fat">Visceral Fat</label>
+                <div class="number-picker" data-field="visceral_fat">
+                    <button type="button" class="spinner-btn minus">-</button>
+                    <input type="text" class="spinner-value" value="10" readonly data-part="int" min="1" max="59">
+                    <button type="button" class="spinner-btn plus">+</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="sleep">Sleep (hours)</label>
+                <div class="compound-spinner" data-field="sleep">
+                    <div class="number-picker">
+                        <button type="button" class="spinner-btn minus">-</button>
+                        <input type="text" class="spinner-value" value="7" readonly data-part="int" min="0" max="23">
+                        <button type="button" class="spinner-btn plus">+</button>
+                    </div>
+                    <span class="separator">.</span>
+                    <div class="number-picker">
+                        <button type="button" class="spinner-btn minus">-</button>
+                        <input type="text" class="spinner-value" value="5" readonly data-part="dec" min="0" max="9">
+                        <button type="button" class="spinner-btn plus">+</button>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" rows="3"></textarea>
+            </div>
+            <button type="submit">Save Log</button>
+        </form>
+        <p id="message"></p>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
