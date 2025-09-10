@@ -1,0 +1,32 @@
+services:
+  datatracker-backend:
+    image: horotw/horohelper-backend:latest
+    restart: unless-stopped
+
+    networks: 
+      - caddy_global
+      - internal
+
+    volumes:
+      - ./mounts/data:/app/data
+
+    environment:
+      TZ: Europe/Berlin
+
+  datatracker-frontend:
+    image: horotw/horohelper-frontend:latest
+    restart: unless-stopped
+
+    networks: 
+      - caddy_global
+      - internal
+    depends_on:
+      - datatracker-backend
+    environment:
+      TZ: Europe/Berlin
+      API_URL: http://datatracker-backend:8000
+
+networks:
+  caddy_global:
+     external: true
+  internal:

@@ -1,14 +1,12 @@
-version: '3.8'
-
 services:
-  backend:
+  datatracker-backend:
     build: ./backend
     ports:
       - "8000:8000"
     volumes:
       - ./data:/app/data
 
-  frontend:
+  datatracker-frontend:
     build: ./frontend
     ports:
       - "8080:80"
