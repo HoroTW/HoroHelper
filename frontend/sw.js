@@ -1,12 +1,20 @@
-// This service worker is intentionally left blank for now.
-// It's required for a PWA to be installable.
-// Future caching strategies can be implemented here.
+// sw.js
 
-self.addEventListener('install', (event) => {
-  console.log('Service Worker installing.');
+// Install event
+self.addEventListener("install", (event) => {
+  // Skip waiting so the SW activates immediately
+  self.skipWaiting();
 });
 
-self.addEventListener('fetch', (event) => {
-  // For now, just fetch from the network.
-  event.respondWith(fetch(event.request));
+// Activate event
+self.addEventListener("activate", (event) => {
+  // Claim control of all clients immediately
+  event.waitUntil(self.clients.claim());
+});
+
+// (Optional) Fetch handler — not required for installability
+// but useful if you want to cache assets later.
+self.addEventListener("fetch", (event) => {
+  // For now, just pass requests through
+  return;
 });
