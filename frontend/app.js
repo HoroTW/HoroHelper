@@ -3,17 +3,41 @@ document.addEventListener('DOMContentLoaded', () => {
     const messageEl = document.getElementById('message');
     const dateInput = document.getElementById('current-date');
     const timeInput = document.getElementById('current-time');
+    const modeToggle = document.getElementById('mode-toggle');
+    const modeText = document.getElementById('mode-text');
+    const submitBtn = document.getElementById('submit-btn');
+    const healthFields = document.getElementById('health-fields');
+    const jabFields = document.getElementById('jab-fields');
     
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' || window.location.protocol === 'file:';
     const apiUrl = isLocal ? 'http://127.0.0.1:8000' : '';
 
     const ITEM_HEIGHT = 20; // Corresponds to .roller-item height in CSS
 
+    let currentMode = 'health'; // 'health' or 'jab'
+
     function setCurrentDateTime() {
         const now = new Date();
         dateInput.value = now.toISOString().split('T')[0];
         timeInput.value = now.toTimeString().split(' ')[0].substring(0, 5);
     }
+
+    function switchMode() {
+        currentMode = modeToggle.checked ? 'jab' : 'health';
+        if (currentMode === 'jab') {
+            healthFields.style.display = 'none';
+            jabFields.style.display = 'block';
+            modeText.textContent = 'Jab Log';
+            submitBtn.textContent = 'Save Jab';
+        } else {
+            healthFields.style.display = 'block';
+            jabFields.style.display = 'none';
+            modeText.textContent = 'Health Log';
+            submitBtn.textContent = 'Save Log';
+        }
+    }
+
+    modeToggle.addEventListener('change', switchMode);
 
     function setupRollers() {
         document.querySelectorAll('.roller').forEach(roller => {
@@ -105,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setCurrentDateTime();
     setupRollers();
+    switchMode(); // Initialize mode display
 
     // Fetch the last log to pre-fill the form
     fetch(`${apiUrl}/api/logs/last`)
@@ -135,16 +160,26 @@ document.addEventListener('DOMContentLoaded', () => {
         messageEl.textContent = '';
 
         const data = {};
-        document.querySelectorAll('.compound-roller').forEach(container => {
-            const field = container.dataset.field;
-            const intVal = container.querySelector('.roller[data-part="int"]').dataset.value;
-            const decVal = container.querySelector('.roller[data-part="dec"]').dataset.value;
-            data[field] = `${intVal}.${decVal}`;
-        });
-        const visceralFatRoller = document.querySelector('.roller[data-field="visceral_fat"]');
-        if (visceralFatRoller) {
-            data.visceral_fat = visceralFatRoller.dataset.value;
+        
+        if (currentMode === 'health') {
+            document.querySelectorAll('#health-fields .compound-roller').forEach(container => {
+                const field = container.dataset.field;
+                const intVal = container.querySelector('.roller[data-part="int"]').dataset.value;
+                const decVal = container.querySelector('.roller[data-part="dec"]').dataset.value;
+                data[field] = `${intVal}.${decVal}`;
+            });
+            const visceralFatRoller = document.querySelector('.roller[data-field="visceral_fat"]');
+            if (visceralFatRoller) {
+                data.visceral_fat = visceralFatRoller.dataset.value;
+            }
+        } else {
+            // Jab mode
+            const doseContainer = document.querySelector('#jab-fields .compound-roller[data-field="dose"]');
+            const intVal = doseContainer.querySelector('.roller[data-part="int"]').dataset.value;
+            const decVal = doseContainer.querySelector('.roller[data-part="dec"]').dataset.value;
+            data.dose = `${intVal}.${decVal}`;
         }
+        
         data.notes = document.getElementById('notes').value;
         data.date = dateInput.value;
         data.time = timeInput.value;
@@ -155,7 +190,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        fetch(`${apiUrl}/api/logs`, {
+        const endpoint = currentMode === 'health' ? '/api/logs' : '/api/jabs';
+        const successMessage = currentMode === 'health' ? 'Log saved successfully!' : 'Jab saved successfully!';
+
+        fetch(`${apiUrl}${endpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
@@ -165,12 +203,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return response.json();
         })
         .then(savedData => {
-            messageEl.textContent = 'Log saved successfully!';
+            messageEl.textContent = successMessage;
             messageEl.style.color = 'green';
             console.log('Success:', savedData);
         })
         .catch(error => {
-            messageEl.textContent = 'Failed to save log.';
+            messageEl.textContent = `Failed to save ${currentMode === 'health' ? 'log' : 'jab'}.`;
             messageEl.style.color = 'red';
             console.error('Error:', error);
         });
