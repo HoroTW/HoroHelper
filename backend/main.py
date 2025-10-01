@@ -87,3 +87,57 @@ def get_last_log(db: Session = Depends(get_db)):
     if last_log is None:
         raise HTTPException(status_code=404, detail="No logs found")
     return last_log
+
+# Jab endpoints
+class JabCreate(BaseModel):
+    date: datetime.date | None = None
+    time: datetime.time | None = None
+    dose: float
+    notes: str | None = None
+
+@app.get("/api/jabs")
+def get_all_jabs(db: Session = Depends(get_db)):
+    return db.query(models.Jab).order_by(models.Jab.date.asc(), models.Jab.time.asc()).all()
+
+@app.post("/api/jabs")
+def create_jab(jab: JabCreate, db: Session = Depends(get_db)):
+    db_jab = models.Jab(
+        date=jab.date if jab.date else datetime.date.today(),
+        time=jab.time if jab.time else datetime.datetime.now().time(),
+        dose=jab.dose,
+        notes=jab.notes
+    )
+    db.add(db_jab)
+    db.commit()
+    db.refresh(db_jab)
+    return db_jab
+
+@app.put("/api/jabs/{jab_id}")
+def update_jab(jab_id: int, jab: JabCreate, db: Session = Depends(get_db)):
+    db_jab = db.query(models.Jab).filter(models.Jab.id == jab_id).first()
+    if db_jab is None:
+        raise HTTPException(status_code=404, detail="Jab not found")
+
+    for key, value in jab.dict(exclude_unset=True).items():
+        setattr(db_jab, key, value)
+
+    db.commit()
+    db.refresh(db_jab)
+    return db_jab
+
+@app.delete("/api/jabs/{jab_id}")
+def delete_jab(jab_id: int, db: Session = Depends(get_db)):
+    db_jab = db.query(models.Jab).filter(models.Jab.id == jab_id).first()
+    if db_jab is None:
+        raise HTTPException(status_code=404, detail="Jab not found")
+    
+    db.delete(db_jab)
+    db.commit()
+    return {"ok": True}
+
+@app.get("/api/jabs/last")
+def get_last_jab(db: Session = Depends(get_db)):
+    last_jab = db.query(models.Jab).order_by(models.Jab.id.desc()).first()
+    if last_jab is None:
+        raise HTTPException(status_code=404, detail="No jabs found")
+    return last_jab

@@ -23,4 +23,13 @@ class Log(Base):
     sleep = Column(Float, nullable=True)
     notes = Column(String, nullable=True)
 
+class Jab(Base):
+    __tablename__ = "jabs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(Date, default=datetime.date.today)
+    time = Column(Time, default=datetime.datetime.now().time)
+    dose = Column(Float, nullable=False)  # dose in mg
+    notes = Column(String, nullable=True)
+
 Base.metadata.create_all(bind=engine)
