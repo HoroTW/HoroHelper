@@ -5,6 +5,7 @@ import models
 from models import SessionLocal, engine
 from pydantic import BaseModel
 import datetime
+from medication_calculator import calculate_medication_levels
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -141,3 +142,31 @@ def get_last_jab(db: Session = Depends(get_db)):
     if last_jab is None:
         raise HTTPException(status_code=404, detail="No jabs found")
     return last_jab
+
+@app.get("/api/medication-levels")
+def get_medication_levels(db: Session = Depends(get_db)):
+    """
+    Calculate and return medication levels over time based on jab history.
+    
+    Returns a list of datetime + medication level values.
+    """
+    jabs = db.query(models.Jab).order_by(models.Jab.date.asc(), models.Jab.time.asc()).all()
+    
+    if not jabs:
+        return []
+    
+    # Convert SQLAlchemy models to dictionaries for the calculator
+    jabs_data = [
+        {
+            "date": jab.date,
+            "time": jab.time,
+            "dose": jab.dose,
+            "notes": jab.notes
+        }
+        for jab in jabs
+    ]
+    
+    # Calculate medication levels
+    levels = calculate_medication_levels(jabs_data)
+    
+    return levels
