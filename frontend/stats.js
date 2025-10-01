@@ -21,49 +21,126 @@ document.addEventListener('DOMContentLoaded', () => {
     thrid_color = '#AFD55A';
     fourth_color = '#5AD5BD';
 
-    function calculateMovingAverage(data, points = 7) {
-        // Return an array of nulls if data is too short for a moving average
-        if (data.length < points) {
-            return new Array(data.length).fill(null);
+    function calculateMovingAverage(data, options = {}) {
+        const {
+            bandwidth = 0.43,       // Smoothing bandwidth (0-1, higher = smoother)
+            projectionDays = 3,    // Number of future points to project
+            minDataPoints = 3      // Minimum data points needed
+        } = options;
+
+        // Filter out null/undefined values and track indices
+        const validPoints = [];
+        const validIndices = [];
+        data.forEach((val, idx) => {
+            if (val != null && !isNaN(val)) {
+                validPoints.push(val);
+                validIndices.push(idx);
+            }
+        });
+
+        if (validPoints.length < minDataPoints) {
+            return new Array(data.length + projectionDays).fill(null);
         }
-    
-        const movingAverage = new Array(data.length).fill(null);
-        const halfPoints = Math.floor(points / 2);
-    
-        // Calculate the core moving average, ignoring null/undefined values in the window
-        for (let i = halfPoints; i < data.length - halfPoints; i++) {
-            const window = data.slice(i - halfPoints, i + halfPoints + 1).filter(v => v != null);
-            if (window.length > 0) {
-                const sum = window.reduce((acc, val) => acc + val, 0);
-                movingAverage[i] = sum / window.length;
+
+        // LOWESS (Locally Weighted Scatterplot Smoothing)
+        // Very smooth, follows trends naturally, resistant to outliers
+        const smoothed = new Array(validPoints.length);
+        const n = validPoints.length;
+        const span = Math.max(3, Math.floor(bandwidth * n));
+
+        // Tricube weight function
+        const tricube = (x) => {
+            const absX = Math.abs(x);
+            return absX < 1 ? Math.pow(1 - Math.pow(absX, 3), 3) : 0;
+        };
+
+        // Fit local linear regression at each point
+        for (let i = 0; i < n; i++) {
+            // Determine the window of points to use
+            const distances = validIndices.map((_, j) => Math.abs(j - i));
+            const sortedDists = [...distances].sort((a, b) => a - b);
+            const maxDist = sortedDists[Math.min(span, n - 1)];
+
+            if (maxDist === 0) {
+                smoothed[i] = validPoints[i];
+                continue;
+            }
+
+            // Calculate weights using tricube function
+            const weights = distances.map(d => tricube(d / maxDist));
+            
+            // Weighted linear regression
+            let sumW = 0, sumWX = 0, sumWY = 0, sumWX2 = 0, sumWXY = 0;
+            for (let j = 0; j < n; j++) {
+                const w = weights[j];
+                if (w > 0) {
+                    sumW += w;
+                    sumWX += w * j;
+                    sumWY += w * validPoints[j];
+                    sumWX2 += w * j * j;
+                    sumWXY += w * j * validPoints[j];
+                }
+            }
+
+            // Solve for line: y = a + b*x
+            const denom = sumW * sumWX2 - sumWX * sumWX;
+            if (Math.abs(denom) > 1e-10) {
+                const a = (sumWX2 * sumWY - sumWX * sumWXY) / denom;
+                const b = (sumW * sumWXY - sumWX * sumWY) / denom;
+                smoothed[i] = a + b * i;
+            } else {
+                // Fallback to weighted mean
+                smoothed[i] = sumWY / sumW;
             }
         }
-    
-        // --- Padding ---
-        const firstMAIndex = halfPoints;
-        const lastMAIndex = data.length - halfPoints - 1;
-    
-        // Start Padding
-        if (movingAverage[firstMAIndex] !== null && data[firstMAIndex] !== null) {
-            const startDelta = movingAverage[firstMAIndex] - data[firstMAIndex];
-            for (let i = 0; i < firstMAIndex; i++) {
-                if (data[i] !== null) {
-                    movingAverage[i] = data[i] + startDelta;
+
+        // Map back to original data indices
+        const result = new Array(data.length).fill(null);
+        validIndices.forEach((originalIdx, smoothedIdx) => {
+            result[originalIdx] = smoothed[smoothedIdx];
+        });
+
+        // Interpolate missing values
+        for (let i = 0; i < result.length - 1; i++) {
+            if (result[i] !== null) {
+                let nextIdx = i + 1;
+                while (nextIdx < result.length && result[nextIdx] === null) {
+                    nextIdx++;
+                }
+                if (nextIdx < result.length) {
+                    const gap = nextIdx - i;
+                    const step = (result[nextIdx] - result[i]) / gap;
+                    for (let j = i + 1; j < nextIdx; j++) {
+                        result[j] = result[i] + step * (j - i);
+                    }
                 }
             }
         }
-    
-        // End Padding
-        if (movingAverage[lastMAIndex] !== null && data[lastMAIndex] !== null) {
-            const endDelta = movingAverage[lastMAIndex] - data[lastMAIndex];
-            for (let i = lastMAIndex + 1; i < data.length; i++) {
-                if (data[i] !== null) {
-                    movingAverage[i] = data[i] + endDelta;
-                }
+
+        // Simple linear projection for future values
+        if (projectionDays > 0 && smoothed.length >= 2) {
+            // Use last few points to estimate trend
+            const lookback = Math.min(10, smoothed.length);
+            const recentSmoothed = smoothed.slice(-lookback);
+            
+            // Linear regression on recent smoothed values
+            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+            for (let i = 0; i < lookback; i++) {
+                sumX += i;
+                sumY += recentSmoothed[i];
+                sumXY += i * recentSmoothed[i];
+                sumX2 += i * i;
+            }
+            const slope = (lookback * sumXY - sumX * sumY) / (lookback * sumX2 - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / lookback;
+            const lastValue = smoothed[smoothed.length - 1];
+            
+            for (let i = 1; i <= projectionDays; i++) {
+                result.push(lastValue + slope * i);
             }
         }
-    
-        return movingAverage;
+
+        return result;
     }
 
     function createChart(ctx, label, labels, data, movingAverageData = null) {
@@ -76,14 +153,39 @@ document.addEventListener('DOMContentLoaded', () => {
         const datasets = [];
         
         if (movingAverageData) {
+            // Split the moving average into actual and projected data
+            const actualLength = data.length;
+            const actualAverage = movingAverageData.slice(0, actualLength);
+            const projectedAverage = movingAverageData.slice(actualLength - 1); // Include last point for continuity
+            
+            // Actual moving average (solid line)
             datasets.push({
-                label: '1W Average',
-                data: movingAverageData,
+                label: 'Smoothed',
+                data: actualAverage,
                 borderColor: secondary_color,
                 fill: false,
                 tension: 0.3,
-                pointRadius: 0 // Hide points for the average line
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                hoverBorderWidth: 2
             });
+            
+            // Projected moving average (dashed line)
+            if (projectedAverage.length > 1) {
+                // Pad the beginning with nulls to align with the chart
+                const paddedProjection = new Array(actualLength - 1).fill(null).concat(projectedAverage);
+                datasets.push({
+                    label: 'Projected',
+                    data: paddedProjection,
+                    borderColor: secondary_color,
+                    borderDash: [5, 5],
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    hoverBorderWidth: 2
+                });
+            }
         }
 
         // Push main dataset
@@ -105,6 +207,10 @@ document.addEventListener('DOMContentLoaded', () => {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                // interaction: {
+                //     mode: 'none',
+                //     intersect: false,
+                // },
                 scales: {
                     x: {
                         ticks: { color: '#A0AEC0' },
@@ -118,9 +224,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 plugins: {
                     legend: {
                         labels: {
-                            color: '#E2E8F0'
+                            color: '#E2E8F0',
+                            filter: function(item, chart) {
+                                // Hide "Projected" from legend
+                                // return item.text !== 'Projected';
+                                // to also hide "Smoothed", use:
+                                return item.text !== 'Projected' && item.text !== 'Smoothed';
+                            }
                         }
-                    }
+                    },
+                    // tooltip: {
+                    //     callbacks: {
+                    //         label: function(context) {
+                    //             // Hide tooltip for average and projected lines
+                    //             // if (context.dataset.label === '1W Average' || context.dataset.label === 'Projected') {
+                    //             //     return null;
+                    //             // }
+                    //             let label = context.dataset.label || '';
+                    //             if (label) {
+                    //                 label += ': ';
+                    //             }
+                    //             if (context.parsed.y !== null) {
+                    //                 label += context.parsed.y;
+                    //             }
+                    //             return label;
+                    //         }
+                    //     }
+                    // }
                 }
             }
         });
@@ -199,6 +329,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 allLogs = logs; // Store for editing
                 const labels = logs.map(log => log.date);
 
+                // Extend labels for projection (5 days ahead)
+                const projectionDays = 5;
+                const extendedLabels = [...labels];
+                if (logs.length > 0) {
+                    const lastDate = new Date(logs[logs.length - 1].date);
+                    for (let i = 1; i <= projectionDays; i++) {
+                        const futureDate = new Date(lastDate);
+                        futureDate.setDate(lastDate.getDate() + i);
+                        extendedLabels.push(futureDate.toISOString().split('T')[0]);
+                    }
+                }
+
                 const charts = {
                     weight: { ctx: 'weightChart', label: 'Weight (kg)', data: logs.map(l => l.weight) },
                     bodyFat: { ctx: 'bodyFatChart', label: 'Body Fat (%)', data: logs.map(l => l.body_fat) },
@@ -211,10 +353,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     const chart = charts[key];
                     const ctx = document.getElementById(chart.ctx).getContext('2d');
                     let movingAverage = null;
-                    if (['weight', 'muscle', 'bodyFat'].includes(key)) {
+                    if (['weight', 'muscle', 'bodyFat', 'sleep'].includes(key)) {
                         movingAverage = calculateMovingAverage(chart.data);
                     }
-                    createChart(ctx, chart.label, labels, chart.data, movingAverage);
+                    createChart(ctx, chart.label, extendedLabels, chart.data, movingAverage);
                 }
 
                 populateTable(logs);
