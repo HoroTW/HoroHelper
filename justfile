@@ -45,6 +45,19 @@ transfer-frontend: save-frontend
     @echo "✅ Frontend image loaded and tagged on remote host."
 
 
+local-dev-docker:
+    @echo "Starting local development environment..."
+    docker-compose -f docker-compose.dev.yml up --build
+
+local-dev:
+    @echo "Starting local development environment using .venv env for backend..."
+    tmux new-session -d -s horohelper 'bash -c "cd backend && pwd && source ../.venv/bin/activate && echo activated && DATABASE_URL=sqlite:///../data/database.db python -m uvicorn main:app --reload --port 8000"'
+    tmux split-window -h 'bash -c "cd frontend && pwd && python -m http.server 3000"'
+    tmux attach -t horohelper
+    @echo "Local development environment started. Backend on port 8000, Frontend on port 3000."
+
+
+
 # --- Aggregate Recipes ---
 
 # Build both images
