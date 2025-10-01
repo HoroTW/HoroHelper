@@ -15,23 +15,92 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    function createChart(ctx, label, labels, data) {
+    // created Tetradic color scheme
+    main_color = '#805AD5';
+    secondary_color = '#D55A72';
+    thrid_color = '#AFD55A';
+    fourth_color = '#5AD5BD';
+
+    function calculateMovingAverage(data, points = 7) {
+        // Return an array of nulls if data is too short for a moving average
+        if (data.length < points) {
+            return new Array(data.length).fill(null);
+        }
+    
+        const movingAverage = new Array(data.length).fill(null);
+        const halfPoints = Math.floor(points / 2);
+    
+        // Calculate the core moving average, ignoring null/undefined values in the window
+        for (let i = halfPoints; i < data.length - halfPoints; i++) {
+            const window = data.slice(i - halfPoints, i + halfPoints + 1).filter(v => v != null);
+            if (window.length > 0) {
+                const sum = window.reduce((acc, val) => acc + val, 0);
+                movingAverage[i] = sum / window.length;
+            }
+        }
+    
+        // --- Padding ---
+        const firstMAIndex = halfPoints;
+        const lastMAIndex = data.length - halfPoints - 1;
+    
+        // Start Padding
+        if (movingAverage[firstMAIndex] !== null && data[firstMAIndex] !== null) {
+            const startDelta = movingAverage[firstMAIndex] - data[firstMAIndex];
+            for (let i = 0; i < firstMAIndex; i++) {
+                if (data[i] !== null) {
+                    movingAverage[i] = data[i] + startDelta;
+                }
+            }
+        }
+    
+        // End Padding
+        if (movingAverage[lastMAIndex] !== null && data[lastMAIndex] !== null) {
+            const endDelta = movingAverage[lastMAIndex] - data[lastMAIndex];
+            for (let i = lastMAIndex + 1; i < data.length; i++) {
+                if (data[i] !== null) {
+                    movingAverage[i] = data[i] + endDelta;
+                }
+            }
+        }
+    
+        return movingAverage;
+    }
+
+    function createChart(ctx, label, labels, data, movingAverageData = null) {
         if (window.myCharts && window.myCharts[ctx.canvas.id]) {
             window.myCharts[ctx.canvas.id].destroy();
         }
         window.myCharts = window.myCharts || {};
+
+        // Initiate datasets array
+        const datasets = [];
+        
+        if (movingAverageData) {
+            datasets.push({
+                label: '1W Average',
+                data: movingAverageData,
+                borderColor: secondary_color,
+                fill: false,
+                tension: 0.3,
+                pointRadius: 0 // Hide points for the average line
+            });
+        }
+
+        // Push main dataset
+        datasets.push({
+            label: label,
+            data: data,
+            borderColor: main_color,
+            backgroundColor: 'rgba(128, 90, 213, 0.2)',
+            fill: true,
+            tension: 0.3
+        });
+
         window.myCharts[ctx.canvas.id] = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
-                datasets: [{
-                    label: label,
-                    data: data,
-                    borderColor: '#805AD5',
-                    backgroundColor: 'rgba(128, 90, 213, 0.2)',
-                    fill: true,
-                    tension: 0.3
-                }]
+                datasets: datasets
             },
             options: {
                 responsive: true,
@@ -141,7 +210,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (const key in charts) {
                     const chart = charts[key];
                     const ctx = document.getElementById(chart.ctx).getContext('2d');
-                    createChart(ctx, chart.label, labels, chart.data);
+                    let movingAverage = null;
+                    if (['weight', 'muscle', 'bodyFat'].includes(key)) {
+                        movingAverage = calculateMovingAverage(chart.data);
+                    }
+                    createChart(ctx, chart.label, labels, chart.data, movingAverage);
                 }
 
                 populateTable(logs);
