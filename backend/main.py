@@ -28,7 +28,7 @@ def get_db():
 
 @app.get("/api/logs")
 def get_all_logs(db: Session = Depends(get_db)):
-    return db.query(models.Log).order_by(models.Log.id.asc()).all()
+    return db.query(models.Log).order_by(models.Log.date.asc(), models.Log.time.asc()).all()
 
 # Pydantic model for request body
 class LogCreate(BaseModel):
