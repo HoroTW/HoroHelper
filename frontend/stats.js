@@ -306,50 +306,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Add medication levels dataset if provided (for weight chart)
         if (medicationLevels && medicationLevels.length > 0) {
-            // Create a map of medication levels by datetime for quick lookup
-            // For each log entry (with date + time), find the closest medication level
-            const actualLabels = labels.slice(0, data.length); // Only use labels where we have weight data
-            const medData = actualLabels.map((label, idx) => {
-                // Parse the label back to date and time
-                const [dateStr, timeStr] = label.split(' ');
-                
-                // Find medication levels for this date
-                const dateMatches = medicationLevels.filter(m => m.datetime.startsWith(dateStr));
-                
-                if (dateMatches.length === 0) return null;
-                
-                // If we have time info, find the closest one by time
-                if (timeStr) {
-                    const targetTime = timeStr.split(':').map(Number); // [HH, MM]
-                    const targetMinutes = targetTime[0] * 60 + targetTime[1];
-                    
-                    let closest = dateMatches[0];
-                    let minDiff = Infinity;
-                    
-                    dateMatches.forEach(m => {
-                        const medTime = m.datetime.split('T')[1].split(':').map(Number); // [HH, MM, SS]
-                        const medMinutes = medTime[0] * 60 + medTime[1];
-                        const diff = Math.abs(medMinutes - targetMinutes);
-                        
-                        if (diff < minDiff) {
-                            minDiff = diff;
-                            closest = m;
-                        }
-                    });
-                    
+            // Get the date range from the weight data
+            const firstWeightDate = data.length > 0 ? parseDateTime(labels[0]) : null;
+            const lastWeightDate = data.length > 0 ? parseDateTime(labels[data.length - 1]) : null;
+            
+            // Include all medication level data points within the date range of weight data
+            const medData = medicationLevels
+                .map(m => {
+                    const datetime = new Date(m.datetime);
                     return {
-                        x: parseDateTime(label),
-                        y: closest.level
+                        x: datetime,
+                        y: m.level
                     };
-                }
-                
-                // Fallback: return average for the day
-                const sum = dateMatches.reduce((acc, m) => acc + m.level, 0);
-                return {
-                    x: parseDateTime(label),
-                    y: sum / dateMatches.length
-                };
-            }).filter(point => point !== null);
+                })
+                .filter(point => {
+                    // Only include points within the range of weight measurements
+                    if (!firstWeightDate || !lastWeightDate) return false;
+                    return point.x >= firstWeightDate && point.x <= lastWeightDate;
+                })
+                .sort((a, b) => a.x - b.x); // Sort by time
             
             datasets.push({
                 label: 'Medication Level (mg)',
@@ -357,9 +332,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 borderColor: fourth_color,
                 backgroundColor: 'rgba(90, 213, 189, 0.1)',
                 fill: false,
-                tension: 0.1,
+                tension: 0.2,
                 pointRadius: 0,
-                pointHoverRadius: 4,
+                pointHoverRadius: 5,
+                pointHoverBorderWidth: 2,
                 yAxisID: 'y1',
                 borderWidth: 2
             });
