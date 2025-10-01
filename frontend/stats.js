@@ -6,12 +6,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const editForm = document.getElementById('edit-form');
     const closeModal = document.querySelector('.close-button');
 
+    const jabModal = document.getElementById('editJabModal');
+    const editJabForm = document.getElementById('edit-jab-form');
+    const closeJabModal = document.querySelector('.close-jab-button');
+
     let allLogs = []; // Store all logs to find the one being edited
+    let allJabs = []; // Store all jabs to find the one being edited
 
     closeModal.onclick = () => modal.style.display = "none";
+    closeJabModal.onclick = () => jabModal.style.display = "none";
     window.onclick = (event) => {
         if (event.target == modal) {
             modal.style.display = "none";
+        }
+        if (event.target == jabModal) {
+            jabModal.style.display = "none";
         }
     };
 
@@ -20,6 +29,63 @@ document.addEventListener('DOMContentLoaded', () => {
     secondary_color = '#D55A72';
     thrid_color = '#AFD55A';
     fourth_color = '#5AD5BD';
+
+    // Interpolate color based on jab dose using HSV
+    function getJabColor(dose) {
+        // 2.5mg -> #D55A72 (348°, 58%, 84%)
+        // 15mg -> #5a75d6 (227°, 58%, 84%)
+        const minDose = 2.5;
+        const maxDose = 15;
+        const minHue = 348;
+        const maxHue = 227;
+        
+        // Clamp dose to range
+        const clampedDose = Math.max(minDose, Math.min(maxDose, dose));
+        
+        // Calculate hue rotation (from 348° to 227° going backwards)
+        // That's a -121° rotation, but we want to wrap around through 360
+        // So 348 -> 360 -> 0 -> 227 is actually +239° or equivalently -121°
+        const hueRange = (360 + maxHue - minHue) % 360; // 239°
+        const t = (clampedDose - minDose) / (maxDose - minDose);
+        const hue = (minHue + hueRange * t) % 360;
+        
+        // Fixed saturation and value
+        const saturation = 58;
+        const value = 84;
+        
+        return hsvToHex(hue, saturation, value);
+    }
+    
+    function hsvToHex(h, s, v) {
+        s = s / 100;
+        v = v / 100;
+        
+        const c = v * s;
+        const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        const m = v - c;
+        
+        let r, g, b;
+        if (h < 60) {
+            [r, g, b] = [c, x, 0];
+        } else if (h < 120) {
+            [r, g, b] = [x, c, 0];
+        } else if (h < 180) {
+            [r, g, b] = [0, c, x];
+        } else if (h < 240) {
+            [r, g, b] = [0, x, c];
+        } else if (h < 300) {
+            [r, g, b] = [x, 0, c];
+        } else {
+            [r, g, b] = [c, 0, x];
+        }
+        
+        const toHex = (n) => {
+            const hex = Math.round((n + m) * 255).toString(16);
+            return hex.length === 1 ? '0' + hex : hex;
+        };
+        
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    }
 
     function calculateMovingAverage(data, options = {}) {
         const {
@@ -143,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return result;
     }
 
-    function createChart(ctx, label, labels, data, movingAverageData = null) {
+    function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo = null) {
         if (window.myCharts && window.myCharts[ctx.canvas.id]) {
             window.myCharts[ctx.canvas.id].destroy();
         }
@@ -158,26 +224,57 @@ document.addEventListener('DOMContentLoaded', () => {
             const actualAverage = movingAverageData.slice(0, actualLength);
             const projectedAverage = movingAverageData.slice(actualLength - 1); // Include last point for continuity
             
-            // Actual moving average (solid line)
-            datasets.push({
-                label: 'Smoothed',
-                data: actualAverage,
-                borderColor: secondary_color,
-                fill: false,
-                tension: 0.3,
-                pointRadius: 0,
-                pointHoverRadius: 0,
-                hoverBorderWidth: 2
-            });
+            // If we have jab info, create segmented lines with different colors
+            if (jabInfo && jabInfo.segments && jabInfo.segments.length > 0) {
+                // Create a dataset for each segment with its own color
+                jabInfo.segments.forEach((segment, idx) => {
+                    const segmentData = new Array(actualLength).fill(null);
+                    // Fill in the data for this segment
+                    for (let i = segment.startIndex; i <= segment.endIndex && i < actualLength; i++) {
+                        segmentData[i] = actualAverage[i];
+                    }
+                    
+                    datasets.push({
+                        label: segment.dose ? `${segment.dose}mg` : 'Pre-jab',
+                        data: segmentData,
+                        borderColor: segment.color,
+                        fill: false,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        hoverBorderWidth: 2,
+                        segment: {
+                            borderColor: segment.color
+                        }
+                    });
+                });
+            } else {
+                // No jabs, use default color for entire smoothed line
+                datasets.push({
+                    label: 'Smoothed',
+                    data: actualAverage,
+                    borderColor: secondary_color,
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    hoverBorderWidth: 2
+                });
+            }
             
             // Projected moving average (dashed line)
             if (projectedAverage.length > 1) {
                 // Pad the beginning with nulls to align with the chart
                 const paddedProjection = new Array(actualLength - 1).fill(null).concat(projectedAverage);
+                // Use the color of the last segment if available
+                const projectionColor = (jabInfo && jabInfo.segments && jabInfo.segments.length > 0) 
+                    ? jabInfo.segments[jabInfo.segments.length - 1].color 
+                    : secondary_color;
+                
                 datasets.push({
                     label: 'Projected',
                     data: paddedProjection,
-                    borderColor: secondary_color,
+                    borderColor: projectionColor,
                     borderDash: [5, 5],
                     fill: false,
                     tension: 0.3,
@@ -225,34 +322,115 @@ document.addEventListener('DOMContentLoaded', () => {
                     legend: {
                         labels: {
                             color: '#E2E8F0',
-                            filter: function(item, chart) {
-                                // Hide "Projected" from legend
-                                // return item.text !== 'Projected';
-                                // to also hide "Smoothed", use:
-                                return item.text !== 'Projected' && item.text !== 'Smoothed';
+                            generateLabels: function(chart) {
+                                const datasets = chart.data.datasets;
+                                const uniqueLabels = new Map(); // Use Map to track unique labels and their colors
+                                
+                                // Helper function to convert hex to rgba with alpha
+                                const hexToRgba = (hex, alpha) => {
+                                    const r = parseInt(hex.slice(1, 3), 16);
+                                    const g = parseInt(hex.slice(3, 5), 16);
+                                    const b = parseInt(hex.slice(5, 7), 16);
+                                    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                                };
+                                
+                                // Collect unique labels (doses) with their colors
+                                datasets.forEach((dataset, i) => {
+                                    const label = dataset.label;
+                                    // Skip these labels entirely
+                                    if (label === 'Projected' || label === 'Smoothed' || label === 'Pre-jab') {
+                                        return;
+                                    }
+                                    
+                                    // Only add if we haven't seen this label before
+                                    if (!uniqueLabels.has(label)) {
+                                        const borderColor = dataset.borderColor;
+                                        uniqueLabels.set(label, {
+                                            text: label,
+                                            fillStyle: hexToRgba(borderColor, 0.2),
+                                            strokeStyle: borderColor,
+                                            fontColor: '#E2E8F0',
+                                            lineWidth: 2,
+                                            hidden: false,
+                                            index: i
+                                        });
+                                    }
+                                });
+                                
+                                // Also add the main weight dataset
+                                const weightDataset = datasets.find(d => d.label && d.label.includes('kg'));
+                                if (weightDataset) {
+                                    const borderColor = weightDataset.borderColor;
+                                    uniqueLabels.set(weightDataset.label, {
+                                        text: weightDataset.label,
+                                        fillStyle: hexToRgba(borderColor, 0.2),
+                                        strokeStyle: borderColor,
+                                        fontColor: '#E2E8F0',
+                                        lineWidth: 2,
+                                        hidden: false,
+                                        index: datasets.indexOf(weightDataset)
+                                    });
+                                }
+                                
+                                return Array.from(uniqueLabels.values());
                             }
                         }
                     },
-                    // tooltip: {
-                    //     callbacks: {
-                    //         label: function(context) {
-                    //             // Hide tooltip for average and projected lines
-                    //             // if (context.dataset.label === '1W Average' || context.dataset.label === 'Projected') {
-                    //             //     return null;
-                    //             // }
-                    //             let label = context.dataset.label || '';
-                    //             if (label) {
-                    //                 label += ': ';
-                    //             }
-                    //             if (context.parsed.y !== null) {
-                    //                 label += context.parsed.y;
-                    //             }
-                    //             return label;
-                    //         }
-                    //     }
-                    // }
                 }
             }
+        });
+    }
+
+    function populateJabsTable(jabs) {
+        const tableBody = document.querySelector('#jabsTable tbody');
+        tableBody.innerHTML = ''; // Clear existing data
+
+        jabs.forEach(jab => {
+            const row = tableBody.insertRow();
+            row.innerHTML = `
+                <td>${jab.date}</td>
+                <td>${jab.time.substring(0, 5)}</td>
+                <td>${jab.dose}</td>
+                <td>${jab.notes || '-'}</td>
+                <td>
+                    <button class="edit-jab-btn" data-id="${jab.id}">Edit</button>
+                    <button class="delete-jab-btn" data-id="${jab.id}">Delete</button>
+                </td>
+            `;
+        });
+
+        document.querySelectorAll('.edit-jab-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const jabId = e.target.dataset.id;
+                const jabToEdit = allJabs.find(jab => jab.id == jabId);
+                if (jabToEdit) {
+                    document.getElementById('edit-jab-id').value = jabToEdit.id;
+                    document.getElementById('edit-jab-dose').value = jabToEdit.dose;
+                    document.getElementById('edit-jab-notes').value = jabToEdit.notes;
+                    jabModal.style.display = "block";
+                }
+            });
+        });
+
+        document.querySelectorAll('.delete-jab-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const jabId = e.target.dataset.id;
+                if (confirm('Are you sure you want to delete this jab entry?')) {
+                    fetch(`${apiUrl}/api/jabs/${jabId}`, {
+                        method: 'DELETE',
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to delete jab');
+                        }
+                        fetchData(); // Refresh data on the page
+                    })
+                    .catch(error => {
+                        console.error('Error deleting jab:', error);
+                        alert('Failed to delete jab.');
+                    });
+                }
+            });
         });
     }
 
@@ -318,15 +496,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function fetchData() {
-        fetch(`${apiUrl}/api/logs`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(logs => {
+        // Fetch both logs and jabs
+        Promise.all([
+            fetch(`${apiUrl}/api/logs`).then(r => r.ok ? r.json() : []),
+            fetch(`${apiUrl}/api/jabs`).then(r => r.ok ? r.json() : [])
+        ])
+            .then(([logs, jabs]) => {
                 allLogs = logs; // Store for editing
+                allJabs = jabs; // Store for editing
+                
                 const labels = logs.map(log => log.date);
 
                 // Extend labels for projection (5 days ahead)
@@ -341,8 +519,63 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
+                // Map jabs to create color segments for the smoothed line
+                const jabSegments = [];
+                
+                // Sort jabs by date
+                const sortedJabs = [...jabs].sort((a, b) => new Date(a.date) - new Date(b.date));
+                
+                // Create segments based on jab dates
+                if (sortedJabs.length > 0) {
+                    let currentStartIndex = 0;
+                    
+                    sortedJabs.forEach((jab, jabIndex) => {
+                        const jabDate = jab.date;
+                        const jabIndexInLabels = labels.indexOf(jabDate);
+                        
+                        if (jabIndexInLabels !== -1) {
+                            // Find the next jab index or use the end of the data
+                            const nextJabIndex = jabIndex < sortedJabs.length - 1
+                                ? labels.indexOf(sortedJabs[jabIndex + 1].date)
+                                : -1;
+                            
+                            // End this segment at the next jab (inclusive) or at the end of data
+                            const endIndex = nextJabIndex !== -1 ? nextJabIndex : labels.length - 1;
+                            
+                            jabSegments.push({
+                                startIndex: jabIndexInLabels,
+                                endIndex: endIndex,
+                                dose: jab.dose,
+                                color: getJabColor(jab.dose)
+                            });
+                        }
+                    });
+                    
+                    // If there's data before the first jab, add a default colored segment
+                    if (jabSegments.length > 0 && jabSegments[0].startIndex > 0) {
+                        jabSegments.unshift({
+                            startIndex: 0,
+                            endIndex: jabSegments[0].startIndex,  // Include the overlap point
+                            dose: null,
+                            color: secondary_color
+                        });
+                    }
+                } else {
+                    // No jabs, use default color for entire range
+                    jabSegments.push({
+                        startIndex: 0,
+                        endIndex: labels.length - 1,
+                        dose: null,
+                        color: secondary_color
+                    });
+                }
+                
+                const jabInfo = {
+                    segments: jabSegments
+                };
+
                 const charts = {
-                    weight: { ctx: 'weightChart', label: 'Weight (kg)', data: logs.map(l => l.weight) },
+                    weight: { ctx: 'weightChart', label: 'Weight (kg)', data: logs.map(l => l.weight), includeJabs: true },
                     bodyFat: { ctx: 'bodyFatChart', label: 'Body Fat (%)', data: logs.map(l => l.body_fat) },
                     muscle: { ctx: 'muscleChart', label: 'Muscle (%)', data: logs.map(l => l.muscle) },
                     visceralFat: { ctx: 'visceralFatChart', label: 'Visceral Fat', data: logs.map(l => l.visceral_fat) },
@@ -356,15 +589,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (['weight', 'muscle', 'bodyFat', 'sleep'].includes(key)) {
                         movingAverage = calculateMovingAverage(chart.data);
                     }
-                    createChart(ctx, chart.label, extendedLabels, chart.data, movingAverage);
+                    const jabData = chart.includeJabs ? jabInfo : null;
+                    createChart(ctx, chart.label, extendedLabels, chart.data, movingAverage, jabData);
                 }
 
                 populateTable(logs);
+                populateJabsTable(jabs);
             })
             .catch(error => {
-                console.error('Error fetching log data:', error);
+                console.error('Error fetching data:', error);
                 const tableBody = document.querySelector('#logsTable tbody');
                 tableBody.innerHTML = `<tr><td colspan="9" style="text-align:center;">Could not load data.</td></tr>`;
+                const jabTableBody = document.querySelector('#jabsTable tbody');
+                jabTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Could not load data.</td></tr>`;
             });
     }
 
@@ -394,6 +631,32 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(error => {
             console.error('Error updating log:', error);
+            alert('Failed to save changes.');
+        });
+    });
+
+    editJabForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const jabId = document.getElementById('edit-jab-id').value;
+        const updatedData = {
+            dose: document.getElementById('edit-jab-dose').value,
+            notes: document.getElementById('edit-jab-notes').value || null,
+        };
+
+        fetch(`${apiUrl}/api/jabs/${jabId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to update jab');
+            }
+            jabModal.style.display = "none";
+            fetchData(); // Refresh data on the page
+        })
+        .catch(error => {
+            console.error('Error updating jab:', error);
             alert('Failed to save changes.');
         });
     });
