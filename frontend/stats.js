@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return result;
     }
 
-    function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo = null) {
+    function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo = null, medicationLevels = null) {
         if (window.myCharts && window.myCharts[ctx.canvas.id]) {
             window.myCharts[ctx.canvas.id].destroy();
         }
@@ -217,6 +217,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Initiate datasets array
         const datasets = [];
+        
+        // Convert labels to datetime objects for time scale
+        const parseDateTime = (label) => {
+            // Label format: "YYYY-MM-DD HH:MM"
+            return new Date(label.replace(' ', 'T') + ':00');
+        };
         
         if (movingAverageData) {
             // Split the moving average into actual and projected data
@@ -228,10 +234,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (jabInfo && jabInfo.segments && jabInfo.segments.length > 0) {
                 // Create a dataset for each segment with its own color
                 jabInfo.segments.forEach((segment, idx) => {
-                    const segmentData = new Array(actualLength).fill(null);
+                    const segmentData = [];
                     // Fill in the data for this segment
                     for (let i = segment.startIndex; i <= segment.endIndex && i < actualLength; i++) {
-                        segmentData[i] = actualAverage[i];
+                        if (actualAverage[i] !== null) {
+                            segmentData.push({
+                                x: parseDateTime(labels[i]),
+                                y: actualAverage[i]
+                            });
+                        }
                     }
                     
                     datasets.push({
@@ -250,9 +261,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             } else {
                 // No jabs, use default color for entire smoothed line
+                const smoothedData = actualAverage.map((val, i) => ({
+                    x: parseDateTime(labels[i]),
+                    y: val
+                })).filter(point => point.y !== null);
+                
                 datasets.push({
                     label: 'Smoothed',
-                    data: actualAverage,
+                    data: smoothedData,
                     borderColor: secondary_color,
                     fill: false,
                     tension: 0.3,
@@ -264,8 +280,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Projected moving average (dashed line)
             if (projectedAverage.length > 1) {
-                // Pad the beginning with nulls to align with the chart
-                const paddedProjection = new Array(actualLength - 1).fill(null).concat(projectedAverage);
+                const projectedData = projectedAverage.map((val, i) => ({
+                    x: parseDateTime(labels[actualLength - 1 + i]),
+                    y: val
+                })).filter(point => point.y !== null);
+                
                 // Use the color of the last segment if available
                 const projectionColor = (jabInfo && jabInfo.segments && jabInfo.segments.length > 0) 
                     ? jabInfo.segments[jabInfo.segments.length - 1].color 
@@ -273,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 datasets.push({
                     label: 'Projected',
-                    data: paddedProjection,
+                    data: projectedData,
                     borderColor: projectionColor,
                     borderDash: [5, 5],
                     fill: false,
@@ -285,10 +304,76 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Push main dataset
+        // Add medication levels dataset if provided (for weight chart)
+        if (medicationLevels && medicationLevels.length > 0) {
+            // Create a map of medication levels by datetime for quick lookup
+            // For each log entry (with date + time), find the closest medication level
+            const actualLabels = labels.slice(0, data.length); // Only use labels where we have weight data
+            const medData = actualLabels.map((label, idx) => {
+                // Parse the label back to date and time
+                const [dateStr, timeStr] = label.split(' ');
+                
+                // Find medication levels for this date
+                const dateMatches = medicationLevels.filter(m => m.datetime.startsWith(dateStr));
+                
+                if (dateMatches.length === 0) return null;
+                
+                // If we have time info, find the closest one by time
+                if (timeStr) {
+                    const targetTime = timeStr.split(':').map(Number); // [HH, MM]
+                    const targetMinutes = targetTime[0] * 60 + targetTime[1];
+                    
+                    let closest = dateMatches[0];
+                    let minDiff = Infinity;
+                    
+                    dateMatches.forEach(m => {
+                        const medTime = m.datetime.split('T')[1].split(':').map(Number); // [HH, MM, SS]
+                        const medMinutes = medTime[0] * 60 + medTime[1];
+                        const diff = Math.abs(medMinutes - targetMinutes);
+                        
+                        if (diff < minDiff) {
+                            minDiff = diff;
+                            closest = m;
+                        }
+                    });
+                    
+                    return {
+                        x: parseDateTime(label),
+                        y: closest.level
+                    };
+                }
+                
+                // Fallback: return average for the day
+                const sum = dateMatches.reduce((acc, m) => acc + m.level, 0);
+                return {
+                    x: parseDateTime(label),
+                    y: sum / dateMatches.length
+                };
+            }).filter(point => point !== null);
+            
+            datasets.push({
+                label: 'Medication Level (mg)',
+                data: medData,
+                borderColor: fourth_color,
+                backgroundColor: 'rgba(90, 213, 189, 0.1)',
+                fill: false,
+                tension: 0.1,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                yAxisID: 'y1',
+                borderWidth: 2
+            });
+        }
+
+        // Push main dataset with x/y format
+        const mainData = data.map((val, i) => ({
+            x: parseDateTime(labels[i]),
+            y: val
+        })).filter(point => point.y !== null);
+        
         datasets.push({
             label: label,
-            data: data,
+            data: mainData,
             borderColor: main_color,
             backgroundColor: 'rgba(128, 90, 213, 0.2)',
             fill: true,
@@ -298,24 +383,53 @@ document.addEventListener('DOMContentLoaded', () => {
         window.myCharts[ctx.canvas.id] = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: labels,
                 datasets: datasets
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                // interaction: {
-                //     mode: 'none',
-                //     intersect: false,
-                // },
                 scales: {
                     x: {
-                        ticks: { color: '#A0AEC0' },
+                        type: 'time',
+                        time: {
+                            unit: 'day',
+                            displayFormats: {
+                                day: 'MMM d'
+                            },
+                            tooltipFormat: 'MMM d, HH:mm'
+                        },
+                        ticks: { 
+                            color: '#A0AEC0',
+                            maxRotation: 45,
+                            minRotation: 0
+                        },
                         grid: { color: '#2D3748' }
                     },
                     y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
                         ticks: { color: '#A0AEC0' },
                         grid: { color: '#2D3748' }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: medicationLevels && medicationLevels.length > 0,
+                        position: 'right',
+                        ticks: { 
+                            color: fourth_color,
+                            callback: function(value) {
+                                return value.toFixed(2);
+                            }
+                        },
+                        grid: {
+                            drawOnChartArea: false, // Don't draw grid lines for second axis
+                        },
+                        title: {
+                            display: true,
+                            text: 'Medication Level (mg)',
+                            color: fourth_color
+                        }
                     }
                 },
                 plugins: {
@@ -369,6 +483,21 @@ document.addEventListener('DOMContentLoaded', () => {
                                         lineWidth: 2,
                                         hidden: false,
                                         index: datasets.indexOf(weightDataset)
+                                    });
+                                }
+                                
+                                // Also add medication level dataset if present
+                                const medDataset = datasets.find(d => d.label && d.label.includes('Medication'));
+                                if (medDataset) {
+                                    const borderColor = medDataset.borderColor;
+                                    uniqueLabels.set(medDataset.label, {
+                                        text: medDataset.label,
+                                        fillStyle: hexToRgba(borderColor, 0.2),
+                                        strokeStyle: borderColor,
+                                        fontColor: '#E2E8F0',
+                                        lineWidth: 2,
+                                        hidden: false,
+                                        index: datasets.indexOf(medDataset)
                                     });
                                 }
                                 
@@ -496,16 +625,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function fetchData() {
-        // Fetch both logs and jabs
+        // Fetch logs, jabs, and medication levels
         Promise.all([
             fetch(`${apiUrl}/api/logs`).then(r => r.ok ? r.json() : []),
-            fetch(`${apiUrl}/api/jabs`).then(r => r.ok ? r.json() : [])
+            fetch(`${apiUrl}/api/jabs`).then(r => r.ok ? r.json() : []),
+            fetch(`${apiUrl}/api/medication-levels`).then(r => r.ok ? r.json() : [])
         ])
-            .then(([logs, jabs]) => {
+            .then(([logs, jabs, medicationLevels]) => {
                 allLogs = logs; // Store for editing
                 allJabs = jabs; // Store for editing
                 
-                const labels = logs.map(log => log.date);
+                // Create labels with date and time to handle multiple entries per day
+                const labels = logs.map(log => `${log.date} ${log.time.substring(0, 5)}`);
 
                 // Extend labels for projection (5 days ahead)
                 const projectionDays = 5;
@@ -531,12 +662,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     sortedJabs.forEach((jab, jabIndex) => {
                         const jabDate = jab.date;
-                        const jabIndexInLabels = labels.indexOf(jabDate);
+                        // Find the first label that matches this jab date (could be multiple entries per day)
+                        const jabIndexInLabels = labels.findIndex(label => label.startsWith(jabDate));
                         
                         if (jabIndexInLabels !== -1) {
                             // Find the next jab index or use the end of the data
-                            const nextJabIndex = jabIndex < sortedJabs.length - 1
-                                ? labels.indexOf(sortedJabs[jabIndex + 1].date)
+                            const nextJabDate = jabIndex < sortedJabs.length - 1 ? sortedJabs[jabIndex + 1].date : null;
+                            const nextJabIndex = nextJabDate 
+                                ? labels.findIndex(label => label.startsWith(nextJabDate))
                                 : -1;
                             
                             // End this segment at the next jab (inclusive) or at the end of data
@@ -575,7 +708,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 const charts = {
-                    weight: { ctx: 'weightChart', label: 'Weight (kg)', data: logs.map(l => l.weight), includeJabs: true },
+                    weight: { ctx: 'weightChart', label: 'Weight (kg)', data: logs.map(l => l.weight), includeJabs: true, includeMedication: true },
                     bodyFat: { ctx: 'bodyFatChart', label: 'Body Fat (%)', data: logs.map(l => l.body_fat) },
                     muscle: { ctx: 'muscleChart', label: 'Muscle (%)', data: logs.map(l => l.muscle) },
                     visceralFat: { ctx: 'visceralFatChart', label: 'Visceral Fat', data: logs.map(l => l.visceral_fat) },
@@ -590,7 +723,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         movingAverage = calculateMovingAverage(chart.data);
                     }
                     const jabData = chart.includeJabs ? jabInfo : null;
-                    createChart(ctx, chart.label, extendedLabels, chart.data, movingAverage, jabData);
+                    const medData = chart.includeMedication ? medicationLevels : null;
+                    createChart(ctx, chart.label, extendedLabels, chart.data, movingAverage, jabData, medData);
                 }
 
                 populateTable(logs);
