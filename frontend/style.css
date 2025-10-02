@@ -47,6 +47,7 @@ h1 {
     display: flex;
     gap: 1rem;
     align-items: center;
+    position: relative;
 }
 
 .nav-link {
@@ -66,12 +67,97 @@ h1 {
     color: #B794F4;
 }
 
-.logout-btn {
-    opacity: 0.7;
+/* Hamburger Menu Styles */
+.hamburger-menu {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 1001;
+    transition: transform 0.3s ease;
 }
 
-.logout-btn:hover {
+.hamburger-menu:hover {
+    transform: scale(1.1);
+}
+
+.hamburger-line {
+    width: 24px;
+    height: 3px;
+    background-color: #805AD5;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+}
+
+.hamburger-menu.active .hamburger-line:nth-child(1) {
+    transform: rotate(45deg) translate(6px, 6px);
+}
+
+.hamburger-menu.active .hamburger-line:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger-menu.active .hamburger-line:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
+}
+
+/* Dropdown Menu Styles */
+.dropdown-menu {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    background: rgba(26, 32, 44, 0.98);
+    backdrop-filter: blur(10px);
+    border: 1px solid #4A5568;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    width: 180px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    z-index: 1000;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.dropdown-menu.show {
     opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: block;
+    flex: 1 0 auto;
+    padding: 14px 20px;
+    text-align: left;
+    color: #E2E8F0;
+    text-decoration: none;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid rgba(74, 85, 104, 0.3);
+    cursor: pointer;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: background-color 0.2s;
+    box-sizing: border-box;
+    margin: 0;
+    outline: none;
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item:hover {
+    background-color: rgba(128, 90, 213, 0.2);
+    color: #B794F4;
+    outline: none;
 }
 
 .datetime-container {

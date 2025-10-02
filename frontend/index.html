@@ -14,11 +14,18 @@
         <div class="header">
             <h1>Data Tracker</h1>
             <div class="nav-buttons">
-                <a href="stats.html" class="nav-link">Go to Statistics</a>
-                <a href="register.html" class="nav-link" id="register-link" style="display: none;">Register User</a>
-                <button id="logout-btn" class="nav-link logout-btn">Logout</button>
+                <a href="stats.html" class="nav-link">Stats 📋</a>
+                <button class="hamburger-menu" id="hamburger-btn" aria-label="Menu">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
             </div>
         </div>
+        <nav class="dropdown-menu" id="dropdown-menu">
+            <a href="register.html" class="dropdown-item" id="register-link" style="display: none;">Register User 👥</a>
+            <a href="#" id="logout-btn" class="dropdown-item">Logout 🚪</a>
+        </nav>
         <div class="datetime-container">
             <input type="date" id="current-date">
             <input type="time" id="current-time">
@@ -108,8 +115,27 @@
         // Check admin status on page load
         checkAdminStatus();
 
+        // Hamburger menu functionality
+        const hamburgerBtn = document.getElementById('hamburger-btn');
+        const dropdownMenu = document.getElementById('dropdown-menu');
+
+        hamburgerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('show');
+            hamburgerBtn.classList.toggle('active');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!hamburgerBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.remove('show');
+                hamburgerBtn.classList.remove('active');
+            }
+        });
+
         // Logout functionality
-        document.getElementById('logout-btn').addEventListener('click', async () => {
+        document.getElementById('logout-btn').addEventListener('click', async (e) => {
+            e.preventDefault();
             try {
                 await fetch('/api/auth/logout', { method: 'POST' });
                 window.location.href = '/login.html';
