@@ -5,3 +5,4 @@ pydantic
 python-dotenv
 numpy
 scipy
+passlib[bcrypt]
