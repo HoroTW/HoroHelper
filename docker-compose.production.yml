@@ -11,7 +11,10 @@ services:
       - ./mounts/data:/app/data
 
     environment:
-      TZ: Europe/Berlin
+      - TZ=Europe/Berlin
+      # REQUIRED: Set a custom secret for cookie signing (in .env file)
+      # Generate with: openssl rand -base64 32
+      - AUTH_SECRET=${AUTH_SECRET:-}
 
   datatracker-frontend:
     image: horotw/horohelper-frontend:latest
