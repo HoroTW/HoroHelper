@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, Date, Time
+from sqlalchemy import create_engine, Column, Integer, String, Float, Date, Time, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import datetime
@@ -31,5 +31,16 @@ class Jab(Base):
     time = Column(Time, default=datetime.datetime.now().time)
     dose = Column(Float, nullable=False)  # dose in mg
     notes = Column(String, nullable=True)
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    salt = Column(String, nullable=False)  # Store salt separately for additional security
+    is_active = Column(Boolean, default=True)
+    read_only = Column(Boolean, default=False)  # Read-only users can view but not modify data
+    created_at = Column(Date, default=datetime.date.today)
 
 Base.metadata.create_all(bind=engine)
