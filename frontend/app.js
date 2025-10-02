@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const apiUrl = isLocal ? 'http://127.0.0.1:8000' : '';
 
     const ITEM_HEIGHT = 20; // Corresponds to .roller-item height in CSS
+    const ROLLER_HEIGHT = 55; // Corresponds to .roller height in CSS
 
     let currentMode = 'health'; // 'health' or 'jab'
 
@@ -119,8 +120,9 @@ document.addEventListener('DOMContentLoaded', () => {
             window.addEventListener('mouseup', onEnd);
             window.addEventListener('touchend', onEnd);
             
-            // Initial setup
-            const initialOffset = (roller.clientHeight - ITEM_HEIGHT) / 2;
+            // Initial setup - use constant ROLLER_HEIGHT instead of clientHeight
+            // to avoid issues when parent has display:none
+            const initialOffset = (ROLLER_HEIGHT - ITEM_HEIGHT) / 2;
             content.style.paddingTop = `${initialOffset}px`;
             content.style.paddingBottom = `${initialOffset}px`;
             snapToValue(value, false);
@@ -140,9 +142,9 @@ document.addEventListener('DOMContentLoaded', () => {
             throw new Error('No previous logs.');
         })
         .then(data => {
-            ['weight', 'body_fat', 'muscle', 'sleep'].forEach(field => {
+            ['weight', 'body_fat', 'muscle', 'sleep', 'dose'].forEach(field => {
                 if (data[field] !== null && data[field] !== undefined) {
-                    const [intPart, decPart] = data[field].toString().split('.');
+                    const [intPart, decPart = '0'] = data[field].toString().split('.');
                     const intRoller = document.querySelector(`.compound-roller[data-field="${field}"] .roller[data-part="int"]`);
                     const decRoller = document.querySelector(`.compound-roller[data-field="${field}"] .roller[data-part="dec"]`);
                     if (intRoller) intRoller.dispatchEvent(new CustomEvent('setValue', { detail: parseInt(intPart, 10) }));
