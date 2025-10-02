@@ -7,13 +7,24 @@ from pydantic import BaseModel
 import datetime
 import os
 import secrets
-from passlib.context import CryptContext
+import hashlib
+import logging
+import bcrypt
+import hmac
+import time
 from medication_calculator import calculate_medication_levels
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 models.Base.metadata.create_all(bind=engine)
 
 # Get ADMIN USER from environment variable
 ADMIN_USER = os.getenv("ADMIN_USER", "admin")
+
+# Check if we're in development mode (for cookie security settings)
+IS_DEVELOPMENT = os.getenv("ENVIRONMENT", "production") == "development"
 
 app = FastAPI()
 
@@ -24,9 +35,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Auth secret for cookie signing
 AUTH_SECRET = os.getenv("AUTH_SECRET", secrets.token_hex(32))
@@ -41,15 +49,81 @@ def get_db():
 
 def verify_password(plain_password: str, hashed_password: str, salt: str) -> bool:
     """Verify password with salt."""
-    return pwd_context.verify(plain_password + salt, hashed_password)
+    # Hash the password+salt combination with SHA256 first to avoid bcrypt's 72-byte limit
+    password_with_salt = hashlib.sha256((plain_password + salt).encode()).digest()
+    logger.info(f"Verifying password - SHA256 hash length: {len(password_with_salt)} bytes")
+    # bcrypt expects bytes
+    return bcrypt.checkpw(password_with_salt, hashed_password.encode())
 
 def get_password_hash(password: str, salt: str) -> str:
     """Hash password with salt."""
-    return pwd_context.hash(password + salt)
+    # Hash the password+salt combination with SHA256 first to avoid bcrypt's 72-byte limit
+    combined = password + salt
+    logger.info(f"Hashing password - Input length: {len(combined)} chars, {len(combined.encode())} bytes")
+    password_with_salt = hashlib.sha256(combined.encode()).digest()
+    logger.info(f"After SHA256 - Hash length: {len(password_with_salt)} bytes")
+    
+    # Hash with bcrypt
+    hashed = bcrypt.hashpw(password_with_salt, bcrypt.gensalt())
+    logger.info(f"Successfully hashed password")
+    return hashed.decode('utf-8')
 
 def generate_salt() -> str:
     """Generate a random salt."""
     return secrets.token_hex(16)
+
+def create_auth_token(username: str) -> str:
+    """Create a secure HMAC-signed authentication token."""
+    timestamp = str(int(time.time()))
+    message = f"{username}:{timestamp}"
+    signature = hmac.new(
+        AUTH_SECRET.encode(),
+        message.encode(),
+        hashlib.sha256
+    ).hexdigest()
+    return f"{username}:{timestamp}:{signature}"
+
+def verify_auth_token(token: str, max_age_seconds: int = 60 * 60 * 24 * 360) -> str | None:
+    """
+    Verify HMAC-signed authentication token and return username if valid.
+    Returns None if token is invalid or expired.
+    """
+    try:
+        parts = token.split(":")
+        if len(parts) != 3:
+            logger.warning(f"Invalid token format: expected 3 parts, got {len(parts)}")
+            return None
+        
+        username, timestamp, provided_signature = parts
+        
+        # Verify timestamp is not too old
+        token_age = int(time.time()) - int(timestamp)
+        if token_age > max_age_seconds:
+            logger.warning(f"Token expired: age={token_age}s, max={max_age_seconds}s")
+            return None
+        
+        # Verify timestamp is not from the future (clock skew tolerance: 5 minutes)
+        if token_age < -300:
+            logger.warning(f"Token from future: age={token_age}s")
+            return None
+        
+        # Recreate the signature and compare
+        message = f"{username}:{timestamp}"
+        expected_signature = hmac.new(
+            AUTH_SECRET.encode(),
+            message.encode(),
+            hashlib.sha256
+        ).hexdigest()
+        
+        # Use constant-time comparison to prevent timing attacks
+        if not hmac.compare_digest(expected_signature, provided_signature):
+            logger.warning(f"Invalid signature for user: {username}")
+            return None
+        
+        return username
+    except Exception as e:
+        logger.error(f"Error verifying token: {e}")
+        return None
 
 # Pydantic model for login
 class LoginRequest(BaseModel):
@@ -65,17 +139,29 @@ def get_user_by_username(db: Session, username: str):
     return db.query(models.User).filter(models.User.username == username).first()
 
 def get_current_user_from_cookie(auth_token: str, db: Session):
-    """Extract and validate user from auth cookie."""
+    """Extract and validate user from auth cookie with HMAC verification."""
     if not auth_token:
+        logger.warning("No auth token provided")
         return None
-    try:
-        username = auth_token.split(":")[0]
-        user = get_user_by_username(db, username)
-        if user and user.is_active:
-            return user
-    except:
-        pass
-    return None
+    
+    logger.info(f"Validating auth token (length: {len(auth_token)})")
+    
+    # Verify the token signature
+    username = verify_auth_token(auth_token)
+    if not username:
+        logger.warning("Failed to verify auth token")
+        return None
+    
+    logger.info(f"Token verified for username: {username}")
+    
+    # Get user from database
+    user = get_user_by_username(db, username)
+    if not user or not user.is_active:
+        logger.warning(f"User not found or inactive: {username}")
+        return None
+    
+    logger.info(f"User authenticated successfully: {username}")
+    return user
 
 def require_write_access(auth_token: str = Cookie(None), db: Session = Depends(get_db)):
     """Dependency to check if user has write access (not read-only)."""
@@ -84,6 +170,13 @@ def require_write_access(auth_token: str = Cookie(None), db: Session = Depends(g
         raise HTTPException(status_code=401, detail="Not authenticated")
     if user.read_only:
         raise HTTPException(status_code=403, detail="Read-only access: modifications not allowed")
+    return user
+
+def require_auth(auth_token: str = Cookie(None), db: Session = Depends(get_db)):
+    """Dependency to check if user is authenticated (read or write access)."""
+    user = get_current_user_from_cookie(auth_token, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     return user
 
 def authenticate_user(db: Session, username: str, password: str):
@@ -101,18 +194,24 @@ def login(login_data: LoginRequest, response: Response, db: Session = Depends(ge
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
-    # Set a secure httpOnly cookie with username as token (signed with secret)
-    # In production, you'd want JWT or similar
-    token = f"{user.username}:{AUTH_SECRET}"
+    # Create a secure HMAC-signed token
+    token = create_auth_token(user.username)
+    logger.info(f"Login successful for user: {user.username}, token length: {len(token)}")
+    
     response.set_cookie(
         key="auth_token",
         value=token,
         httponly=True,
-        secure=True,  # Only over HTTPS
+        secure=not IS_DEVELOPMENT,  # Allow cookies over HTTP in development
         samesite="strict",
         max_age=60 * 60 * 24 * 360  # 360 days
     )
-    return {"success": True, "username": user.username, "read_only": user.read_only}
+    return {
+        "success": True, 
+        "username": user.username, 
+        "read_only": user.read_only,
+        "is_admin": user.username == ADMIN_USER
+    }
 
 @app.post("/api/auth/logout")
 def logout(response: Response):
@@ -121,16 +220,29 @@ def logout(response: Response):
     return {"success": True}
 
 @app.post("/api/auth/register")
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    """Register a new user. Only allowed for ADMIN_USER."""
+def register(user_data: UserCreate, auth_token: str = Cookie(None), db: Session = Depends(get_db)):
+    """Register a new user. Only allowed for ADMIN_USER or when creating the first user."""
     # Check if ADMIN_USER exists and is active
     admin_user = get_user_by_username(db, ADMIN_USER)
-    if admin_user is None:
-        # If no admin user exists, allow creation of the first user as admin
-        if user_data.username != ADMIN_USER:
-            raise HTTPException(status_code=403, detail="First user must be the admin user")
     
-    # TODO: Only allow ADMIN_USER to create new users so we need to check if the request is made by ADMIN_USER
+    if admin_user is None:
+        # No admin user exists - allow creation of the first user, which must be the admin
+        if user_data.username != ADMIN_USER:
+            raise HTTPException(
+                status_code=403, 
+                detail=f"First user must be the admin user, you choose the name in the .env or docker-compose file"
+            )
+    else:
+        # Admin user exists - verify that the request is made by the admin
+        current_user = get_current_user_from_cookie(auth_token, db)
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        if current_user.username != ADMIN_USER:
+            raise HTTPException(
+                status_code=403, 
+                detail="Only the admin user can register new users"
+            )
 
     # Check if user already exists
     existing_user = get_user_by_username(db, user_data.username)
@@ -158,18 +270,20 @@ def get_current_user(auth_token: str = Cookie(None), db: Session = Depends(get_d
     if not auth_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    # Extract username from token (basic implementation)
-    try:
-        username = auth_token.split(":")[0]
-        user = get_user_by_username(db, username)
-        if not user or not user.is_active:
-            raise HTTPException(status_code=401, detail="Invalid session")
-        return {"username": user.username, "read_only": user.read_only}
-    except:
-        raise HTTPException(status_code=401, detail="Invalid session")
+    # Validate token and get user
+    user = get_current_user_from_cookie(auth_token, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+    
+    return {
+        "username": user.username, 
+        "read_only": user.read_only,
+        "is_admin": user.username == ADMIN_USER
+    }
 
 @app.get("/api/logs")
-def get_all_logs(db: Session = Depends(get_db)):
+def get_all_logs(db: Session = Depends(get_db), current_user: models.User = Depends(require_auth)):
+    """Get all logs. Requires authentication."""
     return db.query(models.Log).order_by(models.Log.date.asc(), models.Log.time.asc()).all()
 
 # Pydantic model for request body
@@ -224,7 +338,8 @@ def delete_log(log_id: int, db: Session = Depends(get_db), user: models.User = D
     return {"ok": True}
 
 @app.get("/api/logs/last")
-def get_last_log(db: Session = Depends(get_db)):
+def get_last_log(db: Session = Depends(get_db), current_user: models.User = Depends(require_auth)):
+    """Get the last log entry. Requires authentication."""
     last_log = db.query(models.Log).order_by(models.Log.id.desc()).first()
     if last_log is None:
         raise HTTPException(status_code=404, detail="No logs found")
@@ -238,7 +353,8 @@ class JabCreate(BaseModel):
     notes: str | None = None
 
 @app.get("/api/jabs")
-def get_all_jabs(db: Session = Depends(get_db)):
+def get_all_jabs(db: Session = Depends(get_db), current_user: models.User = Depends(require_auth)):
+    """Get all jab entries. Requires authentication."""
     return db.query(models.Jab).order_by(models.Jab.date.asc(), models.Jab.time.asc()).all()
 
 @app.post("/api/jabs")
@@ -278,16 +394,18 @@ def delete_jab(jab_id: int, db: Session = Depends(get_db), user: models.User = D
     return {"ok": True}
 
 @app.get("/api/jabs/last")
-def get_last_jab(db: Session = Depends(get_db)):
+def get_last_jab(db: Session = Depends(get_db), current_user: models.User = Depends(require_auth)):
+    """Get the last jab entry. Requires authentication."""
     last_jab = db.query(models.Jab).order_by(models.Jab.id.desc()).first()
     if last_jab is None:
         raise HTTPException(status_code=404, detail="No jabs found")
     return last_jab
 
 @app.get("/api/medication-levels")
-def get_medication_levels(db: Session = Depends(get_db)):
+def get_medication_levels(db: Session = Depends(get_db), current_user: models.User = Depends(require_auth)):
     """
     Calculate and return medication levels over time based on jab history.
+    Requires authentication.
     
     Returns a list of datetime + medication level values.
     """

@@ -523,6 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (confirm('Are you sure you want to delete this jab entry?')) {
                     fetch(`${apiUrl}/api/jabs/${jabId}`, {
                         method: 'DELETE',
+                        credentials: 'include',
                     })
                     .then(response => {
                         if (!response.ok) {
@@ -584,6 +585,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (confirm('Are you sure you want to delete this log entry?')) {
                     fetch(`${apiUrl}/api/logs/${logId}`, {
                         method: 'DELETE',
+                        credentials: 'include',
                     })
                     .then(response => {
                         if (!response.ok) {
@@ -603,9 +605,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function fetchData() {
         // Fetch logs, jabs, and medication levels
         Promise.all([
-            fetch(`${apiUrl}/api/logs`).then(r => r.ok ? r.json() : []),
-            fetch(`${apiUrl}/api/jabs`).then(r => r.ok ? r.json() : []),
-            fetch(`${apiUrl}/api/medication-levels`).then(r => r.ok ? r.json() : [])
+            fetch(`${apiUrl}/api/logs`, { credentials: 'include' }).then(r => r.ok ? r.json() : []),
+            fetch(`${apiUrl}/api/jabs`, { credentials: 'include' }).then(r => r.ok ? r.json() : []),
+            fetch(`${apiUrl}/api/medication-levels`, { credentials: 'include' }).then(r => r.ok ? r.json() : [])
         ])
             .then(([logs, jabs, medicationLevels]) => {
                 allLogs = logs; // Store for editing
@@ -730,6 +732,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch(`${apiUrl}/api/logs/${logId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(updatedData)
         })
         .then(response => {
@@ -756,6 +759,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch(`${apiUrl}/api/jabs/${jabId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(updatedData)
         })
         .then(response => {

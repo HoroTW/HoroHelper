@@ -132,7 +132,9 @@ document.addEventListener('DOMContentLoaded', () => {
     switchMode(); // Initialize mode display
 
     // Fetch the last log to pre-fill the form
-    fetch(`${apiUrl}/api/logs/last`)
+    fetch(`${apiUrl}/api/logs/last`, {
+        credentials: 'include'  // Include cookies for authentication
+    })
         .then(response => {
             if (response.ok) return response.json();
             throw new Error('No previous logs.');
@@ -196,6 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch(`${apiUrl}${endpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',  // Include cookies for authentication
             body: JSON.stringify(data),
         })
         .then(response => {

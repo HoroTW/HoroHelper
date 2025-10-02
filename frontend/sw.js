@@ -1,4 +1,4 @@
-const CACHE_NAME = 'horohelper-cache-v5'; // Incremented version for cleanup
+const CACHE_NAME = 'horohelper-cache-v6'; // Incremented version for credentials fix
 
 // Install a service worker
 self.addEventListener('install', event => {

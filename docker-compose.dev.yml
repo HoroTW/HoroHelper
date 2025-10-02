@@ -10,6 +10,10 @@ services:
       # REQUIRED: Set a custom secret for cookie signing (in .env file)
       # Generate with: openssl rand -base64 32
       - AUTH_SECRET=${AUTH_SECRET:-}
+      # Set the admin username here or use the .env file - if you don't set it, "admin" will be used
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      # Development mode - allows cookies over HTTP (localhost)
+      - ENVIRONMENT=development
 
   datatracker-frontend:
     build: ./frontend
