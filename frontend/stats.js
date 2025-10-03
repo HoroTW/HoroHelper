@@ -495,6 +495,53 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Generic function to handle edit button clicks
+    function setupEditButton(buttonSelector, dataArray, idField, modal, fieldMappings) {
+        document.querySelectorAll(buttonSelector).forEach(button => {
+            button.addEventListener('click', (e) => {
+                const itemId = e.target.dataset.id;
+                const itemToEdit = dataArray.find(item => item.id == itemId);
+                if (itemToEdit) {
+                    // Set the ID field
+                    document.getElementById(idField).value = itemToEdit.id;
+                    // Set all other fields from mappings
+                    Object.entries(fieldMappings).forEach(([dataKey, inputId]) => {
+                        const element = document.getElementById(inputId);
+                        if (element) {
+                            element.value = itemToEdit[dataKey] || '';
+                        }
+                    });
+                    modal.style.display = "block";
+                }
+            });
+        });
+    }
+
+    // Generic function to handle delete button clicks
+    function setupDeleteButton(buttonSelector, apiEndpoint, entityName) {
+        document.querySelectorAll(buttonSelector).forEach(button => {
+            button.addEventListener('click', (e) => {
+                const itemId = e.target.dataset.id;
+                if (confirm(`Are you sure you want to delete this ${entityName} entry?`)) {
+                    fetch(`${apiUrl}${apiEndpoint}/${itemId}`, {
+                        method: 'DELETE',
+                        credentials: 'include',
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Failed to delete ${entityName}`);
+                        }
+                        fetchData(); // Refresh data on the page
+                    })
+                    .catch(error => {
+                        console.error(`Error deleting ${entityName}:`, error);
+                        alert(`Failed to delete ${entityName}.`);
+                    });
+                }
+            });
+        });
+    }
+
     function populateJabsTable(jabs) {
         const tableBody = document.querySelector('#jabsTable tbody');
         tableBody.innerHTML = ''; // Clear existing data
@@ -513,40 +560,12 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
 
-        document.querySelectorAll('.edit-jab-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const jabId = e.target.dataset.id;
-                const jabToEdit = allJabs.find(jab => jab.id == jabId);
-                if (jabToEdit) {
-                    document.getElementById('edit-jab-id').value = jabToEdit.id;
-                    document.getElementById('edit-jab-dose').value = jabToEdit.dose;
-                    document.getElementById('edit-jab-notes').value = jabToEdit.notes;
-                    jabModal.style.display = "block";
-                }
-            });
+        setupEditButton('.edit-jab-btn', allJabs, 'edit-jab-id', jabModal, {
+            dose: 'edit-jab-dose',
+            notes: 'edit-jab-notes'
         });
 
-        document.querySelectorAll('.delete-jab-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const jabId = e.target.dataset.id;
-                if (confirm('Are you sure you want to delete this jab entry?')) {
-                    fetch(`${apiUrl}/api/jabs/${jabId}`, {
-                        method: 'DELETE',
-                        credentials: 'include',
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Failed to delete jab');
-                        }
-                        fetchData(); // Refresh data on the page
-                    })
-                    .catch(error => {
-                        console.error('Error deleting jab:', error);
-                        alert('Failed to delete jab.');
-                    });
-                }
-            });
-        });
+        setupDeleteButton('.delete-jab-btn', '/api/jabs', 'jab');
     }
 
     function populateMeasurementsTable(measurements) {
@@ -574,47 +593,19 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
 
-        document.querySelectorAll('.edit-measurement-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const measurementId = e.target.dataset.id;
-                const measurementToEdit = allMeasurements.find(m => m.id == measurementId);
-                if (measurementToEdit) {
-                    document.getElementById('edit-measurement-id').value = measurementToEdit.id;
-                    document.getElementById('edit-upper_arm_left').value = measurementToEdit.upper_arm_left;
-                    document.getElementById('edit-upper_arm_right').value = measurementToEdit.upper_arm_right;
-                    document.getElementById('edit-chest').value = measurementToEdit.chest;
-                    document.getElementById('edit-waist').value = measurementToEdit.waist;
-                    document.getElementById('edit-thigh_left').value = measurementToEdit.thigh_left;
-                    document.getElementById('edit-thigh_right').value = measurementToEdit.thigh_right;
-                    document.getElementById('edit-face').value = measurementToEdit.face;
-                    document.getElementById('edit-neck').value = measurementToEdit.neck;
-                    document.getElementById('edit-measurement-notes').value = measurementToEdit.notes;
-                    measurementModal.style.display = "block";
-                }
-            });
+        setupEditButton('.edit-measurement-btn', allMeasurements, 'edit-measurement-id', measurementModal, {
+            upper_arm_left: 'edit-upper_arm_left',
+            upper_arm_right: 'edit-upper_arm_right',
+            chest: 'edit-chest',
+            waist: 'edit-waist',
+            thigh_left: 'edit-thigh_left',
+            thigh_right: 'edit-thigh_right',
+            face: 'edit-face',
+            neck: 'edit-neck',
+            notes: 'edit-measurement-notes'
         });
 
-        document.querySelectorAll('.delete-measurement-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const measurementId = e.target.dataset.id;
-                if (confirm('Are you sure you want to delete this measurement entry?')) {
-                    fetch(`${apiUrl}/api/body-measurements/${measurementId}`, {
-                        method: 'DELETE',
-                        credentials: 'include',
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Failed to delete measurement');
-                        }
-                        fetchData(); // Refresh data on the page
-                    })
-                    .catch(error => {
-                        console.error('Error deleting measurement:', error);
-                        alert('Failed to delete measurement.');
-                    });
-                }
-            });
-        });
+        setupDeleteButton('.delete-measurement-btn', '/api/body-measurements', 'measurement');
     }
 
     function populateTable(logs) {
@@ -639,44 +630,16 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
 
-        document.querySelectorAll('.edit-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const logId = e.target.dataset.id;
-                const logToEdit = allLogs.find(log => log.id == logId);
-                if (logToEdit) {
-                    document.getElementById('edit-log-id').value = logToEdit.id;
-                    document.getElementById('edit-weight').value = logToEdit.weight;
-                    document.getElementById('edit-body_fat').value = logToEdit.body_fat;
-                    document.getElementById('edit-muscle').value = logToEdit.muscle;
-                    document.getElementById('edit-visceral_fat').value = logToEdit.visceral_fat;
-                    document.getElementById('edit-sleep').value = logToEdit.sleep;
-                    document.getElementById('edit-notes').value = logToEdit.notes;
-                    modal.style.display = "block";
-                }
-            });
+        setupEditButton('.edit-btn', allLogs, 'edit-log-id', modal, {
+            weight: 'edit-weight',
+            body_fat: 'edit-body_fat',
+            muscle: 'edit-muscle',
+            visceral_fat: 'edit-visceral_fat',
+            sleep: 'edit-sleep',
+            notes: 'edit-notes'
         });
 
-        document.querySelectorAll('.delete-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const logId = e.target.dataset.id;
-                if (confirm('Are you sure you want to delete this log entry?')) {
-                    fetch(`${apiUrl}/api/logs/${logId}`, {
-                        method: 'DELETE',
-                        credentials: 'include',
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Failed to delete log');
-                        }
-                        fetchData(); // Refresh data on the page
-                    })
-                    .catch(error => {
-                        console.error('Error deleting log:', error);
-                        alert('Failed to delete log.');
-                    });
-                }
-            });
-        });
+        setupDeleteButton('.delete-btn', '/api/logs', 'log');
     }
 
     function createMultiLineChart(ctx, title, labels, datasets) {
@@ -907,96 +870,66 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
 
-    editForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const logId = document.getElementById('edit-log-id').value;
-        const updatedData = {
-            weight: document.getElementById('edit-weight').value || null,
-            body_fat: document.getElementById('edit-body_fat').value || null,
-            muscle: document.getElementById('edit-muscle').value || null,
-            visceral_fat: document.getElementById('edit-visceral_fat').value || null,
-            sleep: document.getElementById('edit-sleep').value || null,
-            notes: document.getElementById('edit-notes').value || null,
-        };
+    // Generic function to handle form submission for updating entries
+    function setupFormSubmit(form, idField, modal, apiEndpoint, entityName, fieldMappings) {
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const itemId = document.getElementById(idField).value;
+            const updatedData = {};
+            
+            // Gather data from form fields
+            Object.entries(fieldMappings).forEach(([dataKey, inputId]) => {
+                const element = document.getElementById(inputId);
+                if (element) {
+                    updatedData[dataKey] = element.value || null;
+                }
+            });
 
-        fetch(`${apiUrl}/api/logs/${logId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify(updatedData)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to update log');
-            }
-            modal.style.display = "none";
-            fetchData(); // Refresh data on the page
-        })
-        .catch(error => {
-            console.error('Error updating log:', error);
-            alert('Failed to save changes.');
+            fetch(`${apiUrl}${apiEndpoint}/${itemId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(updatedData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Failed to update ${entityName}`);
+                }
+                modal.style.display = "none";
+                fetchData(); // Refresh data on the page
+            })
+            .catch(error => {
+                console.error(`Error updating ${entityName}:`, error);
+                alert('Failed to save changes.');
+            });
         });
+    }
+
+    // Setup all form submissions
+    setupFormSubmit(editForm, 'edit-log-id', modal, '/api/logs', 'log', {
+        weight: 'edit-weight',
+        body_fat: 'edit-body_fat',
+        muscle: 'edit-muscle',
+        visceral_fat: 'edit-visceral_fat',
+        sleep: 'edit-sleep',
+        notes: 'edit-notes'
     });
 
-    editJabForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const jabId = document.getElementById('edit-jab-id').value;
-        const updatedData = {
-            dose: document.getElementById('edit-jab-dose').value,
-            notes: document.getElementById('edit-jab-notes').value || null,
-        };
-
-        fetch(`${apiUrl}/api/jabs/${jabId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify(updatedData)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to update jab');
-            }
-            jabModal.style.display = "none";
-            fetchData(); // Refresh data on the page
-        })
-        .catch(error => {
-            console.error('Error updating jab:', error);
-            alert('Failed to save changes.');
-        });
+    setupFormSubmit(editJabForm, 'edit-jab-id', jabModal, '/api/jabs', 'jab', {
+        dose: 'edit-jab-dose',
+        notes: 'edit-jab-notes'
     });
 
-    editMeasurementForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const measurementId = document.getElementById('edit-measurement-id').value;
-        const updatedData = {
-            upper_arm_left: document.getElementById('edit-upper_arm_left').value || null,
-            upper_arm_right: document.getElementById('edit-upper_arm_right').value || null,
-            chest: document.getElementById('edit-chest').value || null,
-            waist: document.getElementById('edit-waist').value || null,
-            thigh_left: document.getElementById('edit-thigh_left').value || null,
-            thigh_right: document.getElementById('edit-thigh_right').value || null,
-            face: document.getElementById('edit-face').value || null,
-            neck: document.getElementById('edit-neck').value || null,
-            notes: document.getElementById('edit-measurement-notes').value || null,
-        };
-
-        fetch(`${apiUrl}/api/body-measurements/${measurementId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify(updatedData)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to update measurement');
-            }
-            measurementModal.style.display = "none";
-            fetchData(); // Refresh data on the page
-        })
-        .catch(error => {
-            console.error('Error updating measurement:', error);
-            alert('Failed to save changes.');
-        });
+    setupFormSubmit(editMeasurementForm, 'edit-measurement-id', measurementModal, '/api/body-measurements', 'measurement', {
+        upper_arm_left: 'edit-upper_arm_left',
+        upper_arm_right: 'edit-upper_arm_right',
+        chest: 'edit-chest',
+        waist: 'edit-waist',
+        thigh_left: 'edit-thigh_left',
+        thigh_right: 'edit-thigh_right',
+        face: 'edit-face',
+        neck: 'edit-neck',
+        notes: 'edit-measurement-notes'
     });
 
     fetchData();

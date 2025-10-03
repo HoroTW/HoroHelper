@@ -222,38 +222,35 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .catch(error => console.info('Error loading previous data:', error.message));
 
+    // Helper function to collect compound roller values
+    function getCompoundRollerValues(selector) {
+        const data = {};
+        document.querySelectorAll(selector).forEach(container => {
+            const field = container.dataset.field;
+            const intVal = container.querySelector('.roller[data-part="int"]').dataset.value;
+            const decVal = container.querySelector('.roller[data-part="dec"]').dataset.value;
+            data[field] = `${intVal}.${decVal}`;
+        });
+        return data;
+    }
+
     // Handle form submission
     form.addEventListener('submit', (event) => {
         event.preventDefault();
         messageEl.textContent = '';
 
-        const data = {};
+        let data = {};
         
         if (currentMode === 'health') {
-            document.querySelectorAll('#health-fields .compound-roller').forEach(container => {
-                const field = container.dataset.field;
-                const intVal = container.querySelector('.roller[data-part="int"]').dataset.value;
-                const decVal = container.querySelector('.roller[data-part="dec"]').dataset.value;
-                data[field] = `${intVal}.${decVal}`;
-            });
+            data = getCompoundRollerValues('#health-fields .compound-roller');
             const visceralFatRoller = document.querySelector('.roller[data-field="visceral_fat"]');
             if (visceralFatRoller) {
                 data.visceral_fat = visceralFatRoller.dataset.value;
             }
         } else if (currentMode === 'jab') {
-            // Jab mode
-            const doseContainer = document.querySelector('#jab-fields .compound-roller[data-field="dose"]');
-            const intVal = doseContainer.querySelector('.roller[data-part="int"]').dataset.value;
-            const decVal = doseContainer.querySelector('.roller[data-part="dec"]').dataset.value;
-            data.dose = `${intVal}.${decVal}`;
+            data = getCompoundRollerValues('#jab-fields .compound-roller');
         } else if (currentMode === 'measurements') {
-            // Body measurements mode
-            document.querySelectorAll('#measurement-fields .compound-roller').forEach(container => {
-                const field = container.dataset.field;
-                const intVal = container.querySelector('.roller[data-part="int"]').dataset.value;
-                const decVal = container.querySelector('.roller[data-part="dec"]').dataset.value;
-                data[field] = `${intVal}.${decVal}`;
-            });
+            data = getCompoundRollerValues('#measurement-fields .compound-roller');
         }
         
         data.notes = document.getElementById('notes').value;
