@@ -499,3 +499,107 @@ def get_last_body_measurement(db: Session = Depends(get_db), current_user: model
     if last_measurement is None:
         raise HTTPException(status_code=404, detail="No body measurements found")
     return last_measurement
+
+class SettingUpdate(BaseModel):
+    setting_key: str
+    setting_value: str
+
+@app.get("/api/settings")
+def get_user_settings(db: Session = Depends(get_db), current_user: models.User = Depends(require_auth)):
+    """Get all settings for the current user. Returns a dict of key-value pairs."""
+    settings = db.query(models.UserSettings).filter(models.UserSettings.user_id == current_user.id).all()
+    return {setting.setting_key: setting.setting_value for setting in settings}
+
+@app.get("/api/settings/{setting_key}")
+def get_user_setting(setting_key: str, db: Session = Depends(get_db), current_user: models.User = Depends(require_auth)):
+    """Get a specific setting for the current user."""
+    setting = db.query(models.UserSettings).filter(
+        models.UserSettings.user_id == current_user.id,
+        models.UserSettings.setting_key == setting_key
+    ).first()
+    
+    if setting is None:
+        raise HTTPException(status_code=404, detail="Setting not found")
+    
+    return {"setting_key": setting.setting_key, "setting_value": setting.setting_value}
+
+@app.put("/api/settings/{setting_key}")
+def update_user_setting(
+    setting_key: str,
+    setting_update: SettingUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_auth)
+):
+    """Update or create a setting for the current user. Authorized users (including read-only) can update settings."""
+    # Find existing setting
+    setting = db.query(models.UserSettings).filter(
+        models.UserSettings.user_id == current_user.id,
+        models.UserSettings.setting_key == setting_key
+    ).first()
+    
+    if setting:
+        # Update existing setting
+        setting.setting_value = setting_update.setting_value
+    else:
+        # Create new setting
+        setting = models.UserSettings(
+            user_id=current_user.id,
+            setting_key=setting_key,
+            setting_value=setting_update.setting_value
+        )
+        db.add(setting)
+    
+    db.commit()
+    db.refresh(setting)
+    return {"setting_key": setting.setting_key, "setting_value": setting.setting_value}
+
+@app.post("/api/settings")
+def batch_update_settings(
+    settings: dict[str, str],
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_auth)
+):
+    """Batch update multiple settings for the current user."""
+    updated_settings = {}
+    
+    for key, value in settings.items():
+        # Find existing setting
+        setting = db.query(models.UserSettings).filter(
+            models.UserSettings.user_id == current_user.id,
+            models.UserSettings.setting_key == key
+        ).first()
+        
+        if setting:
+            setting.setting_value = value
+        else:
+            setting = models.UserSettings(
+                user_id=current_user.id,
+                setting_key=key,
+                setting_value=value
+            )
+            db.add(setting)
+        
+        updated_settings[key] = value
+    
+    db.commit()
+    return updated_settings
+
+@app.delete("/api/settings/{setting_key}")
+def delete_user_setting(
+    setting_key: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_auth)
+):
+    """Delete a setting for the current user."""
+    setting = db.query(models.UserSettings).filter(
+        models.UserSettings.user_id == current_user.id,
+        models.UserSettings.setting_key == setting_key
+    ).first()
+    
+    if setting is None:
+        raise HTTPException(status_code=404, detail="Setting not found")
+    
+    db.delete(setting)
+    db.commit()
+    return {"ok": True}
+

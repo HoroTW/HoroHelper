@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, Date, Time, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, Float, Date, Time, Boolean, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import datetime
@@ -58,5 +58,18 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     read_only = Column(Boolean, default=False)  # Read-only users can view but not modify data
     created_at = Column(Date, default=datetime.date.today)
+
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    setting_key = Column(String, nullable=False)
+    setting_value = Column(String, nullable=False)
+    
+    # Create a unique constraint on user_id + setting_key
+    __table_args__ = (
+        UniqueConstraint('user_id', 'setting_key', name='_user_setting_uc'),
+    )
 
 Base.metadata.create_all(bind=engine)

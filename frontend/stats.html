@@ -25,6 +25,7 @@
             </div>
         </div>
         <nav class="dropdown-menu" id="dropdown-menu">
+            <a href="settings.html" class="dropdown-item">Settings ⚙️</a>
             <a href="register.html" class="dropdown-item" id="register-link" style="display: none;">Register User 👥</a>
             <a href="#" id="logout-btn" class="dropdown-item">Logout 🚪</a>
         </nav>
@@ -234,11 +235,17 @@
     </div>
 
     <!-- Load modules in dependency order -->
+    <script src="settingsUtil.js"></script>
     <script src="chartUtils.js"></script>
     <script src="crudHelpers.js"></script>
     <script src="tableRenderers.js"></script>
     <script src="stats.js"></script>
     <script>
+        // Apply stats visibility settings
+        window.addEventListener('load', () => {
+            SettingsUtil.applyStatsVisibility();
+        });
+        
         // Check if current user is admin and show register link
         async function checkAdminStatus() {
             try {

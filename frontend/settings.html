@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2a004f">
+    <title>Settings - HoroHelper</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Settings</h1>
+            <div class="nav-buttons">
+                <a href="index.html" class="nav-link">Tracker 📝</a>
+                <a href="stats.html" class="nav-link">Stats 📋</a>
+                <button class="hamburger-menu" id="hamburger-btn" aria-label="Menu">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+            </div>
+        </div>
+        <nav class="dropdown-menu" id="dropdown-menu">
+            <a href="register.html" class="dropdown-item" id="register-link" style="display: none;">Register User 👥</a>
+            <a href="#" id="logout-btn" class="dropdown-item">Logout 🚪</a>
+        </nav>
+
+        <div class="settings-container">
+            <h2>Tracker Visibility</h2>
+            <p class="settings-description">Control which sections are visible on the tracker page</p>
+            
+            <div class="settings-section">
+                <div class="setting-item">
+                    <label class="setting-label">
+                        <input type="checkbox" id="hide-jabs-tracker" class="setting-checkbox">
+                        <span>Hide Jab tracker</span>
+                    </label>
+                </div>
+                
+                <div class="setting-item">
+                    <label class="setting-label">
+                        <input type="checkbox" id="hide-health-tracker" class="setting-checkbox">
+                        <span>Hide Health measurements tracker</span>
+                    </label>
+                </div>
+                
+                <div class="setting-item">
+                    <label class="setting-label">
+                        <input type="checkbox" id="hide-body-tracker" class="setting-checkbox">
+                        <span>Hide Body measurements tracker</span>
+                    </label>
+                </div>
+            </div>
+
+            <h2>Stats Visibility</h2>
+            <p class="settings-description">Control which sections are visible on the statistics page</p>
+            
+            <div class="settings-section">
+                <div class="setting-item">
+                    <label class="setting-label">
+                        <input type="checkbox" id="hide-jabs-stats" class="setting-checkbox">
+                        <span>Hide Jab data in stats (WIP)</span>
+                    </label>
+                </div>
+                
+                <div class="setting-item">
+                    <label class="setting-label">
+                        <input type="checkbox" id="hide-health-stats" class="setting-checkbox">
+                        <span>Hide Health measurements in stats (WIP)</span>
+                    </label>
+                </div>
+                
+                <div class="setting-item">
+                    <label class="setting-label">
+                        <input type="checkbox" id="hide-body-stats" class="setting-checkbox">
+                        <span>Hide Body measurements in stats (WIP)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button type="button" id="save-settings-btn" class="submit-button">Save Settings</button>
+                <button type="button" id="reset-settings-btn" class="secondary-button">Reset to Defaults</button>
+            </div>
+
+            <div id="save-message" class="save-message"></div>
+        </div>
+    </div>
+
+    <script src="settings.js"></script>
+    <script>
+        // Check if current user is admin and show register link
+        async function checkAdminStatus() {
+            try {
+                const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' || window.location.protocol === 'file:';
+                const apiUrl = isLocal ? 'http://127.0.0.1:8000' : '';
+                
+                const response = await fetch(`${apiUrl}/api/auth/me`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const user = await response.json();
+                    if (user.is_admin) {
+                        document.getElementById('register-link').style.display = 'block';
+                    }
+                } else {
+                    // Not authenticated, redirect to login
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                console.error('Error checking admin status:', error);
+                window.location.href = 'login.html';
+            }
+        }
+
+        checkAdminStatus();
+
+        // Hamburger menu toggle
+        const hamburgerBtn = document.getElementById('hamburger-btn');
+        const dropdownMenu = document.getElementById('dropdown-menu');
+
+        hamburgerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('show');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!dropdownMenu.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+                dropdownMenu.classList.remove('show');
+            }
+        });
+
+        // Logout functionality
+        document.getElementById('logout-btn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' || window.location.protocol === 'file:';
+            const apiUrl = isLocal ? 'http://127.0.0.1:8000' : '';
+            
+            try {
+                await fetch(`${apiUrl}/api/auth/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch (error) {
+                console.error('Error during logout:', error);
+            }
+            
+            window.location.href = 'login.html';
+        });
+    </script>
+</body>
+</html>

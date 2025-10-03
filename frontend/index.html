@@ -23,6 +23,7 @@
             </div>
         </div>
         <nav class="dropdown-menu" id="dropdown-menu">
+            <a href="settings.html" class="dropdown-item">Settings ⚙️</a>
             <a href="register.html" class="dropdown-item" id="register-link" style="display: none;">Register User 👥</a>
             <a href="#" id="logout-btn" class="dropdown-item">Logout 🚪</a>
         </nav>
@@ -218,6 +219,11 @@
                 });
             });
         }
+    </script>
+    <script src="settingsUtil.js"></script>
+    <script>
+        // Apply tracker visibility settings when page loads
+        SettingsUtil.applyTrackerVisibility();
     </script>
 </body>
 </html>
