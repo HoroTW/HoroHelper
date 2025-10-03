@@ -429,3 +429,73 @@ def get_medication_levels(db: Session = Depends(get_db), current_user: models.Us
     levels = calculate_medication_levels(jabs_data)
     
     return levels
+
+# Body Measurement endpoints
+class BodyMeasurementCreate(BaseModel):
+    date: datetime.date | None = None
+    time: datetime.time | None = None
+    upper_arm_left: float | None = None
+    upper_arm_right: float | None = None
+    chest: float | None = None
+    waist: float | None = None
+    thigh_left: float | None = None
+    thigh_right: float | None = None
+    face: float | None = None
+    neck: float | None = None
+    notes: str | None = None
+
+@app.get("/api/body-measurements")
+def get_all_body_measurements(db: Session = Depends(get_db), current_user: models.User = Depends(require_auth)):
+    """Get all body measurement entries. Requires authentication."""
+    return db.query(models.BodyMeasurement).order_by(models.BodyMeasurement.date.asc(), models.BodyMeasurement.time.asc()).all()
+
+@app.post("/api/body-measurements")
+def create_body_measurement(measurement: BodyMeasurementCreate, db: Session = Depends(get_db), user: models.User = Depends(require_write_access)):
+    db_measurement = models.BodyMeasurement(
+        date=measurement.date if measurement.date else datetime.date.today(),
+        time=measurement.time if measurement.time else datetime.datetime.now().time(),
+        upper_arm_left=measurement.upper_arm_left,
+        upper_arm_right=measurement.upper_arm_right,
+        chest=measurement.chest,
+        waist=measurement.waist,
+        thigh_left=measurement.thigh_left,
+        thigh_right=measurement.thigh_right,
+        face=measurement.face,
+        neck=measurement.neck,
+        notes=measurement.notes
+    )
+    db.add(db_measurement)
+    db.commit()
+    db.refresh(db_measurement)
+    return db_measurement
+
+@app.put("/api/body-measurements/{measurement_id}")
+def update_body_measurement(measurement_id: int, measurement: BodyMeasurementCreate, db: Session = Depends(get_db), user: models.User = Depends(require_write_access)):
+    db_measurement = db.query(models.BodyMeasurement).filter(models.BodyMeasurement.id == measurement_id).first()
+    if db_measurement is None:
+        raise HTTPException(status_code=404, detail="Body measurement not found")
+
+    for key, value in measurement.dict(exclude_unset=True).items():
+        setattr(db_measurement, key, value)
+
+    db.commit()
+    db.refresh(db_measurement)
+    return db_measurement
+
+@app.delete("/api/body-measurements/{measurement_id}")
+def delete_body_measurement(measurement_id: int, db: Session = Depends(get_db), user: models.User = Depends(require_write_access)):
+    db_measurement = db.query(models.BodyMeasurement).filter(models.BodyMeasurement.id == measurement_id).first()
+    if db_measurement is None:
+        raise HTTPException(status_code=404, detail="Body measurement not found")
+    
+    db.delete(db_measurement)
+    db.commit()
+    return {"ok": True}
+
+@app.get("/api/body-measurements/last")
+def get_last_body_measurement(db: Session = Depends(get_db), current_user: models.User = Depends(require_auth)):
+    """Get the last body measurement entry. Requires authentication."""
+    last_measurement = db.query(models.BodyMeasurement).order_by(models.BodyMeasurement.id.desc()).first()
+    if last_measurement is None:
+        raise HTTPException(status_code=404, detail="No body measurements found")
+    return last_measurement
