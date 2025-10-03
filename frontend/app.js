@@ -3,11 +3,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const messageEl = document.getElementById('message');
     const dateInput = document.getElementById('current-date');
     const timeInput = document.getElementById('current-time');
-    const modeToggle = document.getElementById('mode-toggle');
-    const modeText = document.getElementById('mode-text');
     const submitBtn = document.getElementById('submit-btn');
     const healthFields = document.getElementById('health-fields');
     const jabFields = document.getElementById('jab-fields');
+    const measurementFields = document.getElementById('measurement-fields');
+    const modeButtons = document.querySelectorAll('.mode-btn');
     
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' || window.location.protocol === 'file:';
     const apiUrl = isLocal ? 'http://127.0.0.1:8000' : '';
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ITEM_HEIGHT = 20; // Corresponds to .roller-item height in CSS
     const ROLLER_HEIGHT = 55; // Corresponds to .roller height in CSS
 
-    let currentMode = 'health'; // 'health' or 'jab'
+    let currentMode = 'health'; // 'health', 'jab', or 'measurements'
 
     function setCurrentDateTime() {
         const now = new Date();
@@ -23,22 +23,42 @@ document.addEventListener('DOMContentLoaded', () => {
         timeInput.value = now.toTimeString().split(' ')[0].substring(0, 5);
     }
 
-    function switchMode() {
-        currentMode = modeToggle.checked ? 'jab' : 'health';
-        if (currentMode === 'jab') {
-            healthFields.style.display = 'none';
-            jabFields.style.display = 'block';
-            modeText.textContent = 'Jab Log';
-            submitBtn.textContent = 'Save Jab';
-        } else {
+    function switchMode(mode) {
+        currentMode = mode;
+        
+        // Update button states
+        modeButtons.forEach(btn => {
+            if (btn.dataset.mode === mode) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        
+        // Hide all field groups
+        healthFields.style.display = 'none';
+        jabFields.style.display = 'none';
+        measurementFields.style.display = 'none';
+        
+        // Show appropriate fields and update button text
+        if (mode === 'health') {
             healthFields.style.display = 'block';
-            jabFields.style.display = 'none';
-            modeText.textContent = 'Health Log';
             submitBtn.textContent = 'Save Log';
+        } else if (mode === 'jab') {
+            jabFields.style.display = 'block';
+            submitBtn.textContent = 'Save Jab';
+        } else if (mode === 'measurements') {
+            measurementFields.style.display = 'block';
+            submitBtn.textContent = 'Save Measurements';
         }
     }
 
-    modeToggle.addEventListener('change', switchMode);
+    // Add click listeners to mode buttons
+    modeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            switchMode(btn.dataset.mode);
+        });
+    });
 
     function setupRollers() {
         document.querySelectorAll('.roller').forEach(roller => {
@@ -129,34 +149,78 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Helper function to set compound roller values (decimal fields)
+    function setCompoundRollerValue(field, value) {
+        if (value === null || value === undefined) return;
+        const [intPart, decPart = '0'] = value.toString().split('.');
+        const intRoller = document.querySelector(`.compound-roller[data-field="${field}"] .roller[data-part="int"]`);
+        const decRoller = document.querySelector(`.compound-roller[data-field="${field}"] .roller[data-part="dec"]`);
+        if (intRoller) intRoller.dispatchEvent(new CustomEvent('setValue', { detail: parseInt(intPart, 10) }));
+        if (decRoller) decRoller.dispatchEvent(new CustomEvent('setValue', { detail: parseInt(decPart, 10) }));
+    }
+
+    // Helper function to set single roller values (integer fields)
+    function setSingleRollerValue(field, value) {
+        if (value === null || value === undefined) return;
+        const roller = document.querySelector(`.roller[data-field="${field}"]`);
+        if (roller) roller.dispatchEvent(new CustomEvent('setValue', { detail: value }));
+    }
+
+    // Helper function to populate form fields from data object
+    function populateFields(data, fields) {
+        fields.forEach(field => {
+            if (field.type === 'compound') {
+                setCompoundRollerValue(field.name, data[field.name]);
+            } else if (field.type === 'single') {
+                setSingleRollerValue(field.name, data[field.name]);
+            }
+        });
+    }
+
     setCurrentDateTime();
     setupRollers();
-    switchMode(); // Initialize mode display
+    switchMode('health'); // Initialize mode display
 
-    // Fetch the last log to pre-fill the form
-    fetch(`${apiUrl}/api/logs/last`, {
-        credentials: 'include'  // Include cookies for authentication
+    // Fetch all last entries to pre-fill the forms
+    Promise.all([
+        fetch(`${apiUrl}/api/logs/last`, { credentials: 'include' }).then(r => r.ok ? r.json() : null),
+        fetch(`${apiUrl}/api/jabs/last`, { credentials: 'include' }).then(r => r.ok ? r.json() : null),
+        fetch(`${apiUrl}/api/body-measurements/last`, { credentials: 'include' }).then(r => r.ok ? r.json() : null)
+    ])
+    .then(([lastLog, lastJab, lastMeasurement]) => {
+        // Populate health log fields
+        if (lastLog) {
+            populateFields(lastLog, [
+                { name: 'weight', type: 'compound' },
+                { name: 'body_fat', type: 'compound' },
+                { name: 'muscle', type: 'compound' },
+                { name: 'sleep', type: 'compound' },
+                { name: 'visceral_fat', type: 'single' }
+            ]);
+        }
+
+        // Populate jab fields
+        if (lastJab) {
+            populateFields(lastJab, [
+                { name: 'dose', type: 'compound' }
+            ]);
+        }
+
+        // Populate body measurement fields
+        if (lastMeasurement) {
+            populateFields(lastMeasurement, [
+                { name: 'upper_arm_left', type: 'compound' },
+                { name: 'upper_arm_right', type: 'compound' },
+                { name: 'chest', type: 'compound' },
+                { name: 'waist', type: 'compound' },
+                { name: 'thigh_left', type: 'compound' },
+                { name: 'thigh_right', type: 'compound' },
+                { name: 'face', type: 'compound' },
+                { name: 'neck', type: 'compound' }
+            ]);
+        }
     })
-        .then(response => {
-            if (response.ok) return response.json();
-            throw new Error('No previous logs.');
-        })
-        .then(data => {
-            ['weight', 'body_fat', 'muscle', 'sleep', 'dose'].forEach(field => {
-                if (data[field] !== null && data[field] !== undefined) {
-                    const [intPart, decPart = '0'] = data[field].toString().split('.');
-                    const intRoller = document.querySelector(`.compound-roller[data-field="${field}"] .roller[data-part="int"]`);
-                    const decRoller = document.querySelector(`.compound-roller[data-field="${field}"] .roller[data-part="dec"]`);
-                    if (intRoller) intRoller.dispatchEvent(new CustomEvent('setValue', { detail: parseInt(intPart, 10) }));
-                    if (decRoller) decRoller.dispatchEvent(new CustomEvent('setValue', { detail: parseInt(decPart, 10) }));
-                }
-            });
-            if (data.visceral_fat !== null && data.visceral_fat !== undefined) {
-                const roller = document.querySelector(`.roller[data-field="visceral_fat"]`);
-                if (roller) roller.dispatchEvent(new CustomEvent('setValue', { detail: data.visceral_fat }));
-            }
-        })
-        .catch(error => console.info(error.message));
+    .catch(error => console.info('Error loading previous data:', error.message));
 
     // Handle form submission
     form.addEventListener('submit', (event) => {
@@ -176,12 +240,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (visceralFatRoller) {
                 data.visceral_fat = visceralFatRoller.dataset.value;
             }
-        } else {
+        } else if (currentMode === 'jab') {
             // Jab mode
             const doseContainer = document.querySelector('#jab-fields .compound-roller[data-field="dose"]');
             const intVal = doseContainer.querySelector('.roller[data-part="int"]').dataset.value;
             const decVal = doseContainer.querySelector('.roller[data-part="dec"]').dataset.value;
             data.dose = `${intVal}.${decVal}`;
+        } else if (currentMode === 'measurements') {
+            // Body measurements mode
+            document.querySelectorAll('#measurement-fields .compound-roller').forEach(container => {
+                const field = container.dataset.field;
+                const intVal = container.querySelector('.roller[data-part="int"]').dataset.value;
+                const decVal = container.querySelector('.roller[data-part="dec"]').dataset.value;
+                data[field] = `${intVal}.${decVal}`;
+            });
         }
         
         data.notes = document.getElementById('notes').value;
@@ -194,10 +266,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const endpoint = currentMode === 'health' ? '/api/logs' : '/api/jabs';
-        const successMessage = currentMode === 'health' ? 'Log saved successfully!' : 'Jab saved successfully!';
+        const endpoints = {
+            health: '/api/logs',
+            jab: '/api/jabs',
+            measurements: '/api/body-measurements'
+        };
+        
+        const successMessages = {
+            health: 'Log saved successfully!',
+            jab: 'Jab saved successfully!',
+            measurements: 'Body measurements saved successfully!'
+        };
 
-        fetch(`${apiUrl}${endpoint}`, {
+        fetch(`${apiUrl}${endpoints[currentMode]}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',  // Include cookies for authentication
@@ -208,12 +289,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return response.json();
         })
         .then(savedData => {
-            messageEl.textContent = successMessage;
+            messageEl.textContent = successMessages[currentMode];
             messageEl.style.color = 'green';
             console.log('Success:', savedData);
         })
         .catch(error => {
-            messageEl.textContent = `Failed to save ${currentMode === 'health' ? 'log' : 'jab'}.`;
+            messageEl.textContent = `Failed to save ${currentMode}.`;
             messageEl.style.color = 'red';
             console.error('Error:', error);
         });

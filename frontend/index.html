@@ -29,12 +29,10 @@
         <div class="datetime-container">
             <input type="date" id="current-date">
             <input type="time" id="current-time">
-            <div class="mode-switch">
-                <label class="switch-label">
-                    <input type="checkbox" id="mode-toggle">
-                    <span class="switch-slider"></span>
-                </label>
-                <span id="mode-text">Health Log</span>
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="health">Health</button>
+                <button class="mode-btn" data-mode="jab">Jab</button>
+                <button class="mode-btn" data-mode="measurements">Body</button>
             </div>
         </div>
         <form id="tracker-form">
@@ -83,6 +81,72 @@
                         <div class="roller" data-part="int" data-min="0" data-max="100" data-value="2"></div>
                         <span class="separator">.</span>
                         <div class="roller" data-part="dec" data-min="0" data-max="9" data-value="5"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="measurement-fields" style="display: none;">
+                <div class="form-group roller-group">
+                    <label>Upper Arm Left (cm)</label>
+                    <div class="compound-roller" data-field="upper_arm_left">
+                        <div class="roller" data-part="int" data-min="0" data-max="100" data-value="30"></div>
+                        <span class="separator">.</span>
+                        <div class="roller" data-part="dec" data-min="0" data-max="9" data-value="0"></div>
+                    </div>
+                </div>
+                <div class="form-group roller-group">
+                    <label>Upper Arm Right (cm)</label>
+                    <div class="compound-roller" data-field="upper_arm_right">
+                        <div class="roller" data-part="int" data-min="0" data-max="100" data-value="30"></div>
+                        <span class="separator">.</span>
+                        <div class="roller" data-part="dec" data-min="0" data-max="9" data-value="0"></div>
+                    </div>
+                </div>
+                <div class="form-group roller-group">
+                    <label>Chest (cm)</label>
+                    <div class="compound-roller" data-field="chest">
+                        <div class="roller" data-part="int" data-min="0" data-max="200" data-value="90"></div>
+                        <span class="separator">.</span>
+                        <div class="roller" data-part="dec" data-min="0" data-max="9" data-value="0"></div>
+                    </div>
+                </div>
+                <div class="form-group roller-group">
+                    <label>Waist (cm)</label>
+                    <div class="compound-roller" data-field="waist">
+                        <div class="roller" data-part="int" data-min="0" data-max="200" data-value="80"></div>
+                        <span class="separator">.</span>
+                        <div class="roller" data-part="dec" data-min="0" data-max="9" data-value="0"></div>
+                    </div>
+                </div>
+                <div class="form-group roller-group">
+                    <label>Thigh Left (cm)</label>
+                    <div class="compound-roller" data-field="thigh_left">
+                        <div class="roller" data-part="int" data-min="0" data-max="100" data-value="50"></div>
+                        <span class="separator">.</span>
+                        <div class="roller" data-part="dec" data-min="0" data-max="9" data-value="0"></div>
+                    </div>
+                </div>
+                <div class="form-group roller-group">
+                    <label>Thigh Right (cm)</label>
+                    <div class="compound-roller" data-field="thigh_right">
+                        <div class="roller" data-part="int" data-min="0" data-max="100" data-value="50"></div>
+                        <span class="separator">.</span>
+                        <div class="roller" data-part="dec" data-min="0" data-max="9" data-value="0"></div>
+                    </div>
+                </div>
+                <div class="form-group roller-group">
+                    <label>Face (cm)</label>
+                    <div class="compound-roller" data-field="face">
+                        <div class="roller" data-part="int" data-min="0" data-max="100" data-value="20"></div>
+                        <span class="separator">.</span>
+                        <div class="roller" data-part="dec" data-min="0" data-max="9" data-value="0"></div>
+                    </div>
+                </div>
+                <div class="form-group roller-group">
+                    <label>Neck (cm)</label>
+                    <div class="compound-roller" data-field="neck">
+                        <div class="roller" data-part="int" data-min="0" data-max="100" data-value="35"></div>
+                        <span class="separator">.</span>
+                        <div class="roller" data-part="dec" data-min="0" data-max="9" data-value="0"></div>
                     </div>
                 </div>
             </div>

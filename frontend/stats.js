@@ -10,17 +10,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const editJabForm = document.getElementById('edit-jab-form');
     const closeJabModal = document.querySelector('.close-jab-button');
 
+    const measurementModal = document.getElementById('editMeasurementModal');
+    const editMeasurementForm = document.getElementById('edit-measurement-form');
+    const closeMeasurementModal = document.querySelector('.close-measurement-button');
+
     let allLogs = []; // Store all logs to find the one being edited
     let allJabs = []; // Store all jabs to find the one being edited
+    let allMeasurements = []; // Store all measurements to find the one being edited
 
     closeModal.onclick = () => modal.style.display = "none";
     closeJabModal.onclick = () => jabModal.style.display = "none";
+    closeMeasurementModal.onclick = () => measurementModal.style.display = "none";
     window.onclick = (event) => {
         if (event.target == modal) {
             modal.style.display = "none";
         }
         if (event.target == jabModal) {
             jabModal.style.display = "none";
+        }
+        if (event.target == measurementModal) {
+            measurementModal.style.display = "none";
         }
     };
 
@@ -540,6 +549,74 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function populateMeasurementsTable(measurements) {
+        const tableBody = document.querySelector('#measurementsTable tbody');
+        tableBody.innerHTML = ''; // Clear existing data
+
+        measurements.forEach(measurement => {
+            const row = tableBody.insertRow();
+            row.innerHTML = `
+                <td>${measurement.date}</td>
+                <td>${measurement.time.substring(0, 5)}</td>
+                <td>${measurement.upper_arm_left || '-'}</td>
+                <td>${measurement.upper_arm_right || '-'}</td>
+                <td>${measurement.chest || '-'}</td>
+                <td>${measurement.waist || '-'}</td>
+                <td>${measurement.thigh_left || '-'}</td>
+                <td>${measurement.thigh_right || '-'}</td>
+                <td>${measurement.face || '-'}</td>
+                <td>${measurement.neck || '-'}</td>
+                <td>${measurement.notes || '-'}</td>
+                <td>
+                    <button class="edit-measurement-btn" data-id="${measurement.id}">Edit</button>
+                    <button class="delete-measurement-btn" data-id="${measurement.id}">Delete</button>
+                </td>
+            `;
+        });
+
+        document.querySelectorAll('.edit-measurement-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const measurementId = e.target.dataset.id;
+                const measurementToEdit = allMeasurements.find(m => m.id == measurementId);
+                if (measurementToEdit) {
+                    document.getElementById('edit-measurement-id').value = measurementToEdit.id;
+                    document.getElementById('edit-upper_arm_left').value = measurementToEdit.upper_arm_left;
+                    document.getElementById('edit-upper_arm_right').value = measurementToEdit.upper_arm_right;
+                    document.getElementById('edit-chest').value = measurementToEdit.chest;
+                    document.getElementById('edit-waist').value = measurementToEdit.waist;
+                    document.getElementById('edit-thigh_left').value = measurementToEdit.thigh_left;
+                    document.getElementById('edit-thigh_right').value = measurementToEdit.thigh_right;
+                    document.getElementById('edit-face').value = measurementToEdit.face;
+                    document.getElementById('edit-neck').value = measurementToEdit.neck;
+                    document.getElementById('edit-measurement-notes').value = measurementToEdit.notes;
+                    measurementModal.style.display = "block";
+                }
+            });
+        });
+
+        document.querySelectorAll('.delete-measurement-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const measurementId = e.target.dataset.id;
+                if (confirm('Are you sure you want to delete this measurement entry?')) {
+                    fetch(`${apiUrl}/api/body-measurements/${measurementId}`, {
+                        method: 'DELETE',
+                        credentials: 'include',
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to delete measurement');
+                        }
+                        fetchData(); // Refresh data on the page
+                    })
+                    .catch(error => {
+                        console.error('Error deleting measurement:', error);
+                        alert('Failed to delete measurement.');
+                    });
+                }
+            });
+        });
+    }
+
     function populateTable(logs) {
         const tableBody = document.querySelector('#logsTable tbody');
         tableBody.innerHTML = ''; // Clear existing data
@@ -602,16 +679,93 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function createMultiLineChart(ctx, title, labels, datasets) {
+        if (window.myCharts && window.myCharts[ctx.canvas.id]) {
+            window.myCharts[ctx.canvas.id].destroy();
+        }
+        window.myCharts = window.myCharts || {};
+
+        const colors = [main_color, secondary_color, thrid_color, fourth_color];
+        
+        const chartDatasets = datasets.map((dataset, idx) => {
+            const data = dataset.data.map((val, i) => ({
+                x: new Date(labels[i].replace(' ', 'T') + ':00'),
+                y: val
+            })).filter(point => point.y !== null);
+
+            return {
+                label: dataset.label,
+                data: data,
+                borderColor: colors[idx % colors.length],
+                backgroundColor: `${colors[idx % colors.length]}33`,
+                fill: false,
+                tension: 0.3,
+                pointRadius: 3,
+                pointHoverRadius: 5
+            };
+        });
+
+        window.myCharts[ctx.canvas.id] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: chartDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day',
+                            displayFormats: {
+                                day: 'MMM d'
+                            },
+                            tooltipFormat: 'MMM d, HH:mm'
+                        },
+                        ticks: { 
+                            color: '#A0AEC0',
+                            maxRotation: 45,
+                            minRotation: 0
+                        },
+                        grid: { color: '#2D3748' }
+                    },
+                    y: {
+                        ticks: { color: '#A0AEC0' },
+                        grid: { color: '#2D3748' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#E2E8F0'
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: title,
+                        color: '#E2E8F0',
+                        font: {
+                            size: 16
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     function fetchData() {
-        // Fetch logs, jabs, and medication levels
+        // Fetch logs, jabs, body measurements, and medication levels
         Promise.all([
             fetch(`${apiUrl}/api/logs`, { credentials: 'include' }).then(r => r.ok ? r.json() : []),
             fetch(`${apiUrl}/api/jabs`, { credentials: 'include' }).then(r => r.ok ? r.json() : []),
-            fetch(`${apiUrl}/api/medication-levels`, { credentials: 'include' }).then(r => r.ok ? r.json() : [])
+            fetch(`${apiUrl}/api/medication-levels`, { credentials: 'include' }).then(r => r.ok ? r.json() : []),
+            fetch(`${apiUrl}/api/body-measurements`, { credentials: 'include' }).then(r => r.ok ? r.json() : [])
         ])
-            .then(([logs, jabs, medicationLevels]) => {
+            .then(([logs, jabs, medicationLevels, measurements]) => {
                 allLogs = logs; // Store for editing
                 allJabs = jabs; // Store for editing
+                allMeasurements = measurements; // Store for editing
                 
                 // Create labels with date and time to handle multiple entries per day
                 const labels = logs.map(log => `${log.date} ${log.time.substring(0, 5)}`);
@@ -705,8 +859,42 @@ document.addEventListener('DOMContentLoaded', () => {
                     createChart(ctx, chart.label, extendedLabels, chart.data, movingAverage, jabData, medData);
                 }
 
+                // Create body measurement charts
+                if (measurements.length > 0) {
+                    const measurementLabels = measurements.map(m => `${m.date} ${m.time.substring(0, 5)}`);
+                    
+                    // Upper Arms Chart
+                    const upperArmCtx = document.getElementById('upperArmChart').getContext('2d');
+                    createMultiLineChart(upperArmCtx, 'Upper Arms (cm)', measurementLabels, [
+                        { label: 'Left', data: measurements.map(m => m.upper_arm_left) },
+                        { label: 'Right', data: measurements.map(m => m.upper_arm_right) }
+                    ]);
+
+                    // Chest and Waist Chart
+                    const chestWaistCtx = document.getElementById('chestWaistChart').getContext('2d');
+                    createMultiLineChart(chestWaistCtx, 'Chest & Waist (cm)', measurementLabels, [
+                        { label: 'Chest', data: measurements.map(m => m.chest) },
+                        { label: 'Waist', data: measurements.map(m => m.waist) }
+                    ]);
+
+                    // Thighs Chart
+                    const thighCtx = document.getElementById('thighChart').getContext('2d');
+                    createMultiLineChart(thighCtx, 'Thighs (cm)', measurementLabels, [
+                        { label: 'Left', data: measurements.map(m => m.thigh_left) },
+                        { label: 'Right', data: measurements.map(m => m.thigh_right) }
+                    ]);
+
+                    // Face and Neck Chart
+                    const faceNeckCtx = document.getElementById('faceNeckChart').getContext('2d');
+                    createMultiLineChart(faceNeckCtx, 'Face & Neck (cm)', measurementLabels, [
+                        { label: 'Face', data: measurements.map(m => m.face) },
+                        { label: 'Neck', data: measurements.map(m => m.neck) }
+                    ]);
+                }
+
                 populateTable(logs);
                 populateJabsTable(jabs);
+                populateMeasurementsTable(measurements);
             })
             .catch(error => {
                 console.error('Error fetching data:', error);
@@ -714,6 +902,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 tableBody.innerHTML = `<tr><td colspan="9" style="text-align:center;">Could not load data.</td></tr>`;
                 const jabTableBody = document.querySelector('#jabsTable tbody');
                 jabTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Could not load data.</td></tr>`;
+                const measurementsTableBody = document.querySelector('#measurementsTable tbody');
+                measurementsTableBody.innerHTML = `<tr><td colspan="12" style="text-align:center;">Could not load data.</td></tr>`;
             });
     }
 
@@ -771,6 +961,40 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(error => {
             console.error('Error updating jab:', error);
+            alert('Failed to save changes.');
+        });
+    });
+
+    editMeasurementForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const measurementId = document.getElementById('edit-measurement-id').value;
+        const updatedData = {
+            upper_arm_left: document.getElementById('edit-upper_arm_left').value || null,
+            upper_arm_right: document.getElementById('edit-upper_arm_right').value || null,
+            chest: document.getElementById('edit-chest').value || null,
+            waist: document.getElementById('edit-waist').value || null,
+            thigh_left: document.getElementById('edit-thigh_left').value || null,
+            thigh_right: document.getElementById('edit-thigh_right').value || null,
+            face: document.getElementById('edit-face').value || null,
+            neck: document.getElementById('edit-neck').value || null,
+            notes: document.getElementById('edit-measurement-notes').value || null,
+        };
+
+        fetch(`${apiUrl}/api/body-measurements/${measurementId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(updatedData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to update measurement');
+            }
+            measurementModal.style.display = "none";
+            fetchData(); // Refresh data on the page
+        })
+        .catch(error => {
+            console.error('Error updating measurement:', error);
             alert('Failed to save changes.');
         });
     });

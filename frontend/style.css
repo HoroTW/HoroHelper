@@ -169,62 +169,35 @@ h1 {
     flex-wrap: wrap;
 }
 
-.mode-switch {
+.mode-selector {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    background-color: #1A202C;
+    border: 1px solid #4A5568;
+    border-radius: 8px;
+    overflow: hidden;
+    padding: 2px;
 }
 
-.switch-label {
-    position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 24px;
-    cursor: pointer;
-}
-
-.switch-label input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.switch-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #4A5568;
-    transition: 0.4s;
-    border-radius: 24px;
-}
-
-.switch-slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.4s;
-    border-radius: 50%;
-}
-
-input:checked + .switch-slider {
-    background-color: #805AD5;
-}
-
-input:checked + .switch-slider:before {
-    transform: translateX(26px);
-}
-
-#mode-text {
-    font-weight: 600;
+.mode-btn {
+    background: none;
+    border: none;
     color: #E2E8F0;
-    min-width: 90px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 6px;
+    font-family: inherit;
+}
+
+.mode-btn:hover {
+    background-color: rgba(128, 90, 213, 0.2);
+}
+
+.mode-btn.active {
+    background-color: #805AD5;
+    color: #fff;
 }
 
 input[type="date"], input[type="time"] {
