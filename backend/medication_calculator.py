@@ -2,6 +2,8 @@
 Medication level calculator
 
 This module calculates medication levels over time based on injection history.
+To be honest, I have no idea what I'm doing here 
+but I tuned it so it matches some graphs from other apps / sources.
 """
 import datetime
 from typing import List, Dict, Any
