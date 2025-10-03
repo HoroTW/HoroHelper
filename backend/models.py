@@ -32,6 +32,22 @@ class Jab(Base):
     dose = Column(Float, nullable=False)  # dose in mg
     notes = Column(String, nullable=True)
 
+class BodyMeasurement(Base):
+    __tablename__ = "body_measurements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(Date, default=datetime.date.today)
+    time = Column(Time, default=datetime.datetime.now().time)
+    upper_arm_left = Column(Float, nullable=True)
+    upper_arm_right = Column(Float, nullable=True)
+    chest = Column(Float, nullable=True)
+    waist = Column(Float, nullable=True)
+    thigh_left = Column(Float, nullable=True)
+    thigh_right = Column(Float, nullable=True)
+    face = Column(Float, nullable=True)
+    neck = Column(Float, nullable=True)
+    notes = Column(String, nullable=True)
+
 class User(Base):
     __tablename__ = "users"
 
