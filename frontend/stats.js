@@ -8,11 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const jabModal = document.getElementById('editJabModal');
     const editJabForm = document.getElementById('edit-jab-form');
-    const closeJabModal = document.querySelector('.close-jab-button');
+    const closeJabModal = jabModal.querySelector('.close-button');
 
     const measurementModal = document.getElementById('editMeasurementModal');
     const editMeasurementForm = document.getElementById('edit-measurement-form');
-    const closeMeasurementModal = document.querySelector('.close-measurement-button');
+    const closeMeasurementModal = measurementModal.querySelector('.close-button');
 
     let allLogs = []; // Store all logs to find the one being edited
     let allJabs = []; // Store all jabs to find the one being edited
