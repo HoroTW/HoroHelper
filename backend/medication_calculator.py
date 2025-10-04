@@ -41,15 +41,20 @@ def simulate(doses, F, ka, CL_apparent, Vc, Q, Vp, dt=0.5, extra_days_after_last
     t = np.arange(0, t_end+dt, dt)
     A = np.zeros((len(t), 3))
     y = [0.0, 0.0, 0.0]
+    doses_applied = set()  # Track which doses have been applied
+
     for i, ti in enumerate(t):
         # add doses at this time (into absorption depot)
         for D, td in doses:
-            if abs(ti - td) < (dt/2.0):
+            # Check if this dose should be applied at this time point and hasn't been applied yet
+            if abs(ti - td) <= (dt/2.0) and td not in doses_applied:
                 y[0] += F * D
+                doses_applied.add(td)
         # integrate one step
         sol = odeint(tzp_odes, y, [ti, ti+dt], args=(ka, CL_apparent, Vc, Q, Vp))
         y = sol[-1].tolist()
         A[i,:] = y
+
     A_gut, A_c, A_p = A[:,0], A[:,1], A[:,2]
     A_total = A_c + A_p
     # central concentration (ng/mL)
@@ -105,7 +110,6 @@ def calculate_medication_levels(jabs: List[Dict[str, Any]]) -> List[Dict[str, An
     # compute literature-style amount as time series
     A_lit = Cc / 1000.0 * Vdss_reported  # mg
 
-
     # Prepare output with datetime and mg (amount_from_Cmax)
     output = [] # list of dicts with datetime and level (mg)
     for ti, Ai in zip(t, A_lit):
@@ -115,7 +119,7 @@ def calculate_medication_levels(jabs: List[Dict[str, Any]]) -> List[Dict[str, An
             "level": round(Ai, 2)
         })
 
-    # sample to 4-hr intervals for output
-    output = [entry for i, entry in enumerate(output) if i % 8 == 0]
+    # sample to 1-hr intervals for output
+    output_sampled = [entry for i, entry in enumerate(output) if i % 2 == 0]
 
-    return output
+    return output_sampled
