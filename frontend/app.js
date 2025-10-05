@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const jabFields = document.getElementById('jab-fields');
     const measurementFields = document.getElementById('measurement-fields');
     const modeButtons = document.querySelectorAll('.mode-btn');
-    
+
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' || window.location.protocol === 'file:';
     const apiUrl = isLocal ? 'http://127.0.0.1:8000' : '';
 
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function switchMode(mode) {
         currentMode = mode;
-        
+
         // Update button states
         modeButtons.forEach(btn => {
             if (btn.dataset.mode === mode) {
@@ -34,12 +34,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.classList.remove('active');
             }
         });
-        
+
         // Hide all field groups
         healthFields.style.display = 'none';
         jabFields.style.display = 'none';
         measurementFields.style.display = 'none';
-        
+
         // Show appropriate fields and update button text
         if (mode === 'health') {
             healthFields.style.display = 'block';
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
             function snapToValue(val, animate = true) {
                 const index = val - min;
                 const targetY = -(index * ITEM_HEIGHT);
-                
+
                 content.style.transition = animate ? 'transform 0.2s ease-out' : 'none';
                 content.style.transform = `translateY(${targetY}px)`;
 
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const currentTransformY = parseFloat(content.style.transform.replace('translateY(', '')) || 0;
                 const closestIndex = Math.round(-currentTransformY / ITEM_HEIGHT);
                 const newValue = min + closestIndex;
-                
+
                 snapToValue(newValue);
             }
 
@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             window.addEventListener('mouseup', onEnd);
             window.addEventListener('touchend', onEnd);
-            
+
             // Initial setup - use constant ROLLER_HEIGHT instead of clientHeight
             // to avoid issues when parent has display:none
             const initialOffset = (ROLLER_HEIGHT - ITEM_HEIGHT) / 2;
@@ -240,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
         messageEl.textContent = '';
 
         let data = {};
-        
+
         if (currentMode === 'health') {
             data = getCompoundRollerValues('#health-fields .compound-roller');
             const visceralFatRoller = document.querySelector('.roller[data-field="visceral_fat"]');
@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (currentMode === 'measurements') {
             data = getCompoundRollerValues('#measurement-fields .compound-roller');
         }
-        
+
         data.notes = document.getElementById('notes').value;
         data.date = dateInput.value;
         data.time = timeInput.value;
@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
             jab: '/api/jabs',
             measurements: '/api/body-measurements'
         };
-        
+
         const successMessages = {
             health: 'Log saved successfully!',
             jab: 'Jab saved successfully!',

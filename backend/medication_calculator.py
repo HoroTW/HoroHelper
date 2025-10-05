@@ -65,19 +65,19 @@ def simulate(doses, F, ka, CL_apparent, Vc, Q, Vp, dt=0.5, extra_days_after_last
 def calculate_medication_levels(jabs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Calculate medication levels over time based on injection history.
-    
+
     Args:
         jabs: List of jab records, each containing:
             - date: datetime.date
             - time: datetime.time
             - dose: float (in mg)
             - notes: str (optional)
-    
+
     Returns:
         List of dictionaries with:
             - datetime: ISO format datetime string
             - level: float (calculated medication level in mg)
-    
+
     Example:
         >>> jabs = [
         ...     {"date": datetime.date(2025, 1, 1), "time": datetime.time(10, 0), "dose": 2.5},
@@ -85,22 +85,22 @@ def calculate_medication_levels(jabs: List[Dict[str, Any]]) -> List[Dict[str, An
         ... ]
         >>> levels = calculate_medication_levels(jabs)
     """
-    
+
     if not jabs:
         return []
-    
+
     # Convert jabs to doses_list format: (dose in mg, time in hours since first dose)
     first_jab_datetime = datetime.datetime.combine(jabs[0]["date"], jabs[0]["time"])
-    
+
     doses_list = []
     for jab in jabs:
         jab_datetime = datetime.datetime.combine(jab["date"], jab["time"])
         hours_since_first = (jab_datetime - first_jab_datetime).total_seconds() / 3600
         doses_list.append((jab["dose"], hours_since_first))
-    
+
     # Run simulation
     t, A_total, A_c, A_p, Cc = simulate(doses_list, F, ka, CL_apparent, Vc, Q, Vp)
-    
+
     Cmax = Cc.max()                     # ng/mL
     A_total_peak = A_total.max()        # mg
     Cmax_mg_per_L = Cmax / 1000.0

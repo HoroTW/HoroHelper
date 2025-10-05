@@ -53,7 +53,7 @@ function setupFormSubmit(form, idField, modal, apiEndpoint, entityName, fieldMap
         e.preventDefault();
         const itemId = document.getElementById(idField).value;
         const updatedData = {};
-        
+
         // Gather data from form fields
         Object.entries(fieldMappings).forEach(([dataKey, inputId]) => {
             const element = document.getElementById(inputId);

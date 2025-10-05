@@ -3,7 +3,7 @@
 const SettingsUtil = {
     // Cache for settings
     _settingsCache: null,
-    
+
     // Get API URL based on environment
     getApiUrl() {
         const isLocal = window.location.hostname === '127.0.0.1' || 
@@ -11,23 +11,23 @@ const SettingsUtil = {
                        window.location.protocol === 'file:';
         return isLocal ? 'http://127.0.0.1:8000' : '';
     },
-    
+
     // Load settings from API
     async loadSettings() {
         if (this._settingsCache) {
             return this._settingsCache;
         }
-        
+
         try {
             const response = await fetch(`${this.getApiUrl()}/api/settings`, {
                 credentials: 'include'
             });
-            
+
             if (!response.ok) {
                 console.warn('Failed to load settings, using defaults');
                 return {};
             }
-            
+
             this._settingsCache = await response.json();
             return this._settingsCache;
         } catch (error) {
@@ -35,25 +35,25 @@ const SettingsUtil = {
             return {};
         }
     },
-    
+
     // Get a specific setting (returns false if not set)
     async getSetting(key) {
         const settings = await this.loadSettings();
         return settings[key] === 'true';
     },
-    
+
     // Apply tracker visibility settings
     async applyTrackerVisibility() {
         const hideJabs = await this.getSetting('hide_jabs_tracker');
         const hideHealth = await this.getSetting('hide_health_tracker');
         const hideBody = await this.getSetting('hide_body_tracker');
-        
+
         // Get mode buttons
         const modeButtons = document.querySelectorAll('.mode-btn');
-        
+
         modeButtons.forEach(btn => {
             const mode = btn.dataset.mode;
-            
+
             if (mode === 'jab' && hideJabs) {
                 btn.style.display = 'none';
             } else if (mode === 'health' && hideHealth) {
@@ -62,7 +62,7 @@ const SettingsUtil = {
                 btn.style.display = 'none';
             }
         });
-        
+
         // If current mode is hidden, switch to first visible mode
         const activeBtn = document.querySelector('.mode-btn.active');
         if (activeBtn && activeBtn.style.display === 'none') {
@@ -73,13 +73,13 @@ const SettingsUtil = {
             }
         }
     },
-    
+
     // Apply stats visibility settings
     async applyStatsVisibility() {
         const hideJabs = await this.getSetting('hide_jabs_stats');
         const hideHealth = await this.getSetting('hide_health_stats');
         const hideBody = await this.getSetting('hide_body_stats');
-        
+
         // Hide health charts and tables
         if (hideHealth) {
             // Hide health charts
@@ -88,7 +88,7 @@ const SettingsUtil = {
                 const container = chart.closest('.chart-container');
                 if (container) container.style.display = 'none';
             });
-            
+
             // Hide health logs table
             const logsSection = document.querySelector('h2:has(+ #logsTable), h2:contains("Health Logs")');
             if (logsSection) {
@@ -96,7 +96,7 @@ const SettingsUtil = {
                 const logsTable = document.getElementById('logsTable');
                 if (logsTable) logsTable.style.display = 'none';
             }
-            
+
             // Better approach: find by adjacent table
             const logsTable = document.getElementById('logsTable');
             if (logsTable) {
@@ -110,12 +110,12 @@ const SettingsUtil = {
                     prevElement.style.display = 'none';
                 }
             }
-            
+
             // Hide the modal
             const logsModal = document.getElementById('editModal');
             if (logsModal) logsModal.style.display = 'none';
         }
-        
+
         // Hide jab tables
         if (hideJabs) {
             const jabsTable = document.getElementById('jabsTable');
@@ -130,12 +130,12 @@ const SettingsUtil = {
                     prevElement.style.display = 'none';
                 }
             }
-            
+
             // Hide the modal
             const jabModal = document.getElementById('editJabModal');
             if (jabModal) jabModal.style.display = 'none';
         }
-        
+
         // Hide body measurement charts and tables
         if (hideBody) {
             // Hide body measurement charts section
@@ -144,13 +144,13 @@ const SettingsUtil = {
             if (bodyChartsHeading) {
                 bodyChartsHeading.style.display = 'none';
             }
-            
+
             const bodyCharts = document.querySelectorAll('#upperArmChart, #chestWaistChart, #thighChart, #faceNeckChart');
             bodyCharts.forEach(chart => {
                 const container = chart.closest('.chart-container');
                 if (container) container.style.display = 'none';
             });
-            
+
             // Hide body measurements table
             const measurementsTable = document.getElementById('measurementsTable');
             if (measurementsTable) {
@@ -164,7 +164,7 @@ const SettingsUtil = {
                     prevElement.style.display = 'none';
                 }
             }
-            
+
             // Hide the modal
             const measurementModal = document.getElementById('editMeasurementModal');
             if (measurementModal) measurementModal.style.display = 'none';

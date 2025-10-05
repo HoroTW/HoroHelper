@@ -62,7 +62,7 @@ def get_password_hash(password: str, salt: str) -> str:
     logger.info(f"Hashing password - Input length: {len(combined)} chars, {len(combined.encode())} bytes")
     password_with_salt = hashlib.sha256(combined.encode()).digest()
     logger.info(f"After SHA256 - Hash length: {len(password_with_salt)} bytes")
-    
+
     # Hash with bcrypt
     hashed = bcrypt.hashpw(password_with_salt, bcrypt.gensalt())
     logger.info(f"Successfully hashed password")
@@ -93,20 +93,20 @@ def verify_auth_token(token: str, max_age_seconds: int = 60 * 60 * 24 * 360) -> 
         if len(parts) != 3:
             logger.warning(f"Invalid token format: expected 3 parts, got {len(parts)}")
             return None
-        
+
         username, timestamp, provided_signature = parts
-        
+
         # Verify timestamp is not too old
         token_age = int(time.time()) - int(timestamp)
         if token_age > max_age_seconds:
             logger.warning(f"Token expired: age={token_age}s, max={max_age_seconds}s")
             return None
-        
+
         # Verify timestamp is not from the future (clock skew tolerance: 5 minutes)
         if token_age < -300:
             logger.warning(f"Token from future: age={token_age}s")
             return None
-        
+
         # Recreate the signature and compare
         message = f"{username}:{timestamp}"
         expected_signature = hmac.new(
@@ -114,12 +114,12 @@ def verify_auth_token(token: str, max_age_seconds: int = 60 * 60 * 24 * 360) -> 
             message.encode(),
             hashlib.sha256
         ).hexdigest()
-        
+
         # Use constant-time comparison to prevent timing attacks
         if not hmac.compare_digest(expected_signature, provided_signature):
             logger.warning(f"Invalid signature for user: {username}")
             return None
-        
+
         return username
     except Exception as e:
         logger.error(f"Error verifying token: {e}")
@@ -143,23 +143,23 @@ def get_current_user_from_cookie(auth_token: str, db: Session):
     if not auth_token:
         logger.warning("No auth token provided")
         return None
-    
+
     logger.info(f"Validating auth token (length: {len(auth_token)})")
-    
+
     # Verify the token signature
     username = verify_auth_token(auth_token)
     if not username:
         logger.warning("Failed to verify auth token")
         return None
-    
+
     logger.info(f"Token verified for username: {username}")
-    
+
     # Get user from database
     user = get_user_by_username(db, username)
     if not user or not user.is_active:
         logger.warning(f"User not found or inactive: {username}")
         return None
-    
+
     logger.info(f"User authenticated successfully: {username}")
     return user
 
@@ -193,11 +193,11 @@ def login(login_data: LoginRequest, response: Response, db: Session = Depends(ge
     user = authenticate_user(db, login_data.username, login_data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    
+
     # Create a secure HMAC-signed token
     token = create_auth_token(user.username)
     logger.info(f"Login successful for user: {user.username}, token length: {len(token)}")
-    
+
     response.set_cookie(
         key="auth_token",
         value=token,
@@ -224,7 +224,7 @@ def register(user_data: UserCreate, auth_token: str = Cookie(None), db: Session 
     """Register a new user. Only allowed for ADMIN_USER or when creating the first user."""
     # Check if ADMIN_USER exists and is active
     admin_user = get_user_by_username(db, ADMIN_USER)
-    
+
     if admin_user is None:
         # No admin user exists - allow creation of the first user, which must be the admin
         if user_data.username != ADMIN_USER:
@@ -237,7 +237,7 @@ def register(user_data: UserCreate, auth_token: str = Cookie(None), db: Session 
         current_user = get_current_user_from_cookie(auth_token, db)
         if not current_user:
             raise HTTPException(status_code=401, detail="Not authenticated")
-        
+
         if current_user.username != ADMIN_USER:
             raise HTTPException(
                 status_code=403, 
@@ -248,7 +248,7 @@ def register(user_data: UserCreate, auth_token: str = Cookie(None), db: Session 
     existing_user = get_user_by_username(db, user_data.username)
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists")
-    
+
     # Create new user with salt
     salt = generate_salt()
     hashed_password = get_password_hash(user_data.password, salt)
@@ -269,12 +269,12 @@ def get_current_user(auth_token: str = Cookie(None), db: Session = Depends(get_d
     """Get current logged in user."""
     if not auth_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
+
     # Validate token and get user
     user = get_current_user_from_cookie(auth_token, db)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid or expired session")
-    
+
     return {
         "username": user.username, 
         "read_only": user.read_only,
@@ -332,7 +332,7 @@ def delete_log(log_id: int, db: Session = Depends(get_db), user: models.User = D
     db_log = db.query(models.Log).filter(models.Log.id == log_id).first()
     if db_log is None:
         raise HTTPException(status_code=404, detail="Log not found")
-    
+
     db.delete(db_log)
     db.commit()
     return {"ok": True}
@@ -388,7 +388,7 @@ def delete_jab(jab_id: int, db: Session = Depends(get_db), user: models.User = D
     db_jab = db.query(models.Jab).filter(models.Jab.id == jab_id).first()
     if db_jab is None:
         raise HTTPException(status_code=404, detail="Jab not found")
-    
+
     db.delete(db_jab)
     db.commit()
     return {"ok": True}
@@ -406,14 +406,14 @@ def get_medication_levels(db: Session = Depends(get_db), current_user: models.Us
     """
     Calculate and return medication levels over time based on jab history.
     Requires authentication.
-    
+
     Returns a list of datetime + medication level values.
     """
     jabs = db.query(models.Jab).order_by(models.Jab.date.asc(), models.Jab.time.asc()).all()
-    
+
     if not jabs:
         return []
-    
+
     # Convert SQLAlchemy models to dictionaries for the calculator
     jabs_data = [
         {
@@ -424,10 +424,10 @@ def get_medication_levels(db: Session = Depends(get_db), current_user: models.Us
         }
         for jab in jabs
     ]
-    
+
     # Calculate medication levels
     levels = calculate_medication_levels(jabs_data)
-    
+
     return levels
 
 # Body Measurement endpoints
@@ -487,7 +487,7 @@ def delete_body_measurement(measurement_id: int, db: Session = Depends(get_db), 
     db_measurement = db.query(models.BodyMeasurement).filter(models.BodyMeasurement.id == measurement_id).first()
     if db_measurement is None:
         raise HTTPException(status_code=404, detail="Body measurement not found")
-    
+
     db.delete(db_measurement)
     db.commit()
     return {"ok": True}
@@ -517,10 +517,10 @@ def get_user_setting(setting_key: str, db: Session = Depends(get_db), current_us
         models.UserSettings.user_id == current_user.id,
         models.UserSettings.setting_key == setting_key
     ).first()
-    
+
     if setting is None:
         raise HTTPException(status_code=404, detail="Setting not found")
-    
+
     return {"setting_key": setting.setting_key, "setting_value": setting.setting_value}
 
 @app.put("/api/settings/{setting_key}")
@@ -536,7 +536,7 @@ def update_user_setting(
         models.UserSettings.user_id == current_user.id,
         models.UserSettings.setting_key == setting_key
     ).first()
-    
+
     if setting:
         # Update existing setting
         setting.setting_value = setting_update.setting_value
@@ -548,7 +548,7 @@ def update_user_setting(
             setting_value=setting_update.setting_value
         )
         db.add(setting)
-    
+
     db.commit()
     db.refresh(setting)
     return {"setting_key": setting.setting_key, "setting_value": setting.setting_value}
@@ -561,14 +561,14 @@ def batch_update_settings(
 ):
     """Batch update multiple settings for the current user."""
     updated_settings = {}
-    
+
     for key, value in settings.items():
         # Find existing setting
         setting = db.query(models.UserSettings).filter(
             models.UserSettings.user_id == current_user.id,
             models.UserSettings.setting_key == key
         ).first()
-        
+
         if setting:
             setting.setting_value = value
         else:
@@ -578,9 +578,9 @@ def batch_update_settings(
                 setting_value=value
             )
             db.add(setting)
-        
+
         updated_settings[key] = value
-    
+
     db.commit()
     return updated_settings
 
@@ -595,10 +595,10 @@ def delete_user_setting(
         models.UserSettings.user_id == current_user.id,
         models.UserSettings.setting_key == setting_key
     ).first()
-    
+
     if setting is None:
         raise HTTPException(status_code=404, detail="Setting not found")
-    
+
     db.delete(setting)
     db.commit()
     return {"ok": True}

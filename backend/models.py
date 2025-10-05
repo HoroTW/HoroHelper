@@ -66,7 +66,7 @@ class UserSettings(Base):
     user_id = Column(Integer, nullable=False, index=True)
     setting_key = Column(String, nullable=False)
     setting_value = Column(String, nullable=False)
-    
+
     # Create a unique constraint on user_id + setting_key
     __table_args__ = (
         UniqueConstraint('user_id', 'setting_key', name='_user_setting_uc'),

@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 allLogs = logs; // Store for editing
                 allJabs = jabs; // Store for editing
                 allMeasurements = measurements; // Store for editing
-                
+
                 // Create labels with date and time to handle multiple entries per day
                 const labels = logs.map(log => `${log.date} ${log.time.substring(0, 5)}`);
 
@@ -65,29 +65,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Map jabs to create color segments for the smoothed line
                 const jabSegments = [];
-                
+
                 // Sort jabs by date
                 const sortedJabs = [...jabs].sort((a, b) => new Date(a.date) - new Date(b.date));
-                
+
                 // Create segments based on jab dates
                 if (sortedJabs.length > 0) {
                     let currentStartIndex = 0;
-                    
+
                     sortedJabs.forEach((jab, jabIndex) => {
                         const jabDate = jab.date;
                         // Find the first label that matches this jab date (could be multiple entries per day)
                         const jabIndexInLabels = labels.findIndex(label => label.startsWith(jabDate));
-                        
+
                         if (jabIndexInLabels !== -1) {
                             // Find the next jab index or use the end of the data
                             const nextJabDate = jabIndex < sortedJabs.length - 1 ? sortedJabs[jabIndex + 1].date : null;
                             const nextJabIndex = nextJabDate 
                                 ? labels.findIndex(label => label.startsWith(nextJabDate))
                                 : -1;
-                            
+
                             // End this segment at the next jab (inclusive) or at the end of data
                             const endIndex = nextJabIndex !== -1 ? nextJabIndex : labels.length - 1;
-                            
+
                             jabSegments.push({
                                 startIndex: jabIndexInLabels,
                                 endIndex: endIndex,
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             });
                         }
                     });
-                    
+
                     // If there's data before the first jab, add a default colored segment
                     if (jabSegments.length > 0 && jabSegments[0].startIndex > 0) {
                         jabSegments.unshift({
@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         color: secondary_color
                     });
                 }
-                
+
                 const jabInfo = {
                     segments: jabSegments
                 };
@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Create body measurement charts
                 if (measurements.length > 0) {
                     const measurementLabels = measurements.map(m => `${m.date} ${m.time.substring(0, 5)}`);
-                    
+
                     // Upper Arms Chart
                     const upperArmCtx = document.getElementById('upperArmChart').getContext('2d');
                     createMultiLineChart(upperArmCtx, 'Upper Arms (cm)', measurementLabels, [

@@ -14,32 +14,32 @@ function getJabColor(dose) {
     const maxDose = 15;
     const minHue = 348;
     const maxHue = 227;
-    
+
     // Clamp dose to range
     const clampedDose = Math.max(minDose, Math.min(maxDose, dose));
-    
+
     // Calculate hue rotation (from 348° to 227° going backwards)
     // That's a -121° rotation, but we want to wrap around through 360
     // So 348 -> 360 -> 0 -> 227 is actually +239° or equivalently -121°
     const hueRange = (360 + maxHue - minHue) % 360; // 239°
     const t = (clampedDose - minDose) / (maxDose - minDose);
     const hue = (minHue + hueRange * t) % 360;
-    
+
     // Fixed saturation and value
     const saturation = 58;
     const value = 84;
-    
+
     return hsvToHex(hue, saturation, value);
 }
 
 function hsvToHex(h, s, v) {
     s = s / 100;
     v = v / 100;
-    
+
     const c = v * s;
     const x = c * (1 - Math.abs((h / 60) % 2 - 1));
     const m = v - c;
-    
+
     let r, g, b;
     if (h < 60) {
         [r, g, b] = [c, x, 0];
@@ -54,12 +54,12 @@ function hsvToHex(h, s, v) {
     } else {
         [r, g, b] = [c, 0, x];
     }
-    
+
     const toHex = (n) => {
         const hex = Math.round((n + m) * 255).toString(16);
         return hex.length === 1 ? '0' + hex : hex;
     };
-    
+
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
@@ -110,7 +110,7 @@ function calculateMovingAverage(data, options = {}) {
 
         // Calculate weights using tricube function
         const weights = distances.map(d => tricube(d / maxDist));
-        
+
         // Weighted linear regression
         let sumW = 0, sumWX = 0, sumWY = 0, sumWX2 = 0, sumWXY = 0;
         for (let j = 0; j < n; j++) {
@@ -164,7 +164,7 @@ function calculateMovingAverage(data, options = {}) {
         // Use last few points to estimate trend
         const lookback = Math.min(10, smoothed.length);
         const recentSmoothed = smoothed.slice(-lookback);
-        
+
         // Linear regression on recent smoothed values
         let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
         for (let i = 0; i < lookback; i++) {
@@ -176,7 +176,7 @@ function calculateMovingAverage(data, options = {}) {
         const slope = (lookback * sumXY - sumX * sumY) / (lookback * sumX2 - sumX * sumX);
         const intercept = (sumY - slope * sumX) / lookback;
         const lastValue = smoothed[smoothed.length - 1];
-        
+
         for (let i = 1; i <= projectionDays; i++) {
             result.push(lastValue + slope * i);
         }
@@ -193,19 +193,19 @@ function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo
 
     // Initiate datasets array
     const datasets = [];
-    
+
     // Convert labels to datetime objects for time scale
     const parseDateTime = (label) => {
         // Label format: "YYYY-MM-DD HH:MM"
         return new Date(label.replace(' ', 'T') + ':00');
     };
-    
+
     if (movingAverageData) {
         // Split the moving average into actual and projected data
         const actualLength = data.length;
         const actualAverage = movingAverageData.slice(0, actualLength);
         const projectedAverage = movingAverageData.slice(actualLength - 1); // Include last point for continuity
-        
+
         // If we have jab info, create segmented lines with different colors
         if (jabInfo && jabInfo.segments && jabInfo.segments.length > 0) {
             // Create a dataset for each segment with its own color
@@ -220,7 +220,7 @@ function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo
                         });
                     }
                 }
-                
+
                 datasets.push({
                     label: segment.dose ? `${segment.dose}mg` : 'Pre-jab',
                     data: segmentData,
@@ -241,7 +241,7 @@ function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo
                 x: parseDateTime(labels[i]),
                 y: val
             })).filter(point => point.y !== null);
-            
+
             datasets.push({
                 label: 'Smoothed',
                 data: smoothedData,
@@ -253,19 +253,19 @@ function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo
                 hoverBorderWidth: 2
             });
         }
-        
+
         // Projected moving average (dashed line)
         if (projectedAverage.length > 1) {
             const projectedData = projectedAverage.map((val, i) => ({
                 x: parseDateTime(labels[actualLength - 1 + i]),
                 y: val
             })).filter(point => point.y !== null);
-            
+
             // Use the color of the last segment if available
             const projectionColor = (jabInfo && jabInfo.segments && jabInfo.segments.length > 0) 
                 ? jabInfo.segments[jabInfo.segments.length - 1].color 
                 : secondary_color;
-            
+
             datasets.push({
                 label: 'Projected',
                 data: projectedData,
@@ -285,7 +285,7 @@ function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo
         // Get the date range from the weight data
         const firstWeightDate = data.length > 0 ? parseDateTime(labels[0]) : null;
         const lastWeightDate = data.length > 0 ? parseDateTime(labels[data.length - 1]) : null;
-        
+
         // Include all medication level data points within the date range of weight data
         const medData = medicationLevels
             .map(m => {
@@ -301,7 +301,7 @@ function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo
                 return point.x >= firstWeightDate && point.x <= lastWeightDate;
             })
             .sort((a, b) => a.x - b.x); // Sort by time
-        
+
         datasets.push({
             label: 'Medication Level (mg)',
             data: medData,
@@ -322,7 +322,7 @@ function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo
         x: parseDateTime(labels[i]),
         y: val
     })).filter(point => point.y !== null);
-    
+
     datasets.push({
         label: label,
         data: mainData,
@@ -391,7 +391,7 @@ function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo
                         generateLabels: function(chart) {
                             const datasets = chart.data.datasets;
                             const uniqueLabels = new Map(); // Use Map to track unique labels and their colors
-                            
+
                             // Helper function to convert hex to rgba with alpha
                             const hexToRgba = (hex, alpha) => {
                                 const r = parseInt(hex.slice(1, 3), 16);
@@ -399,7 +399,7 @@ function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo
                                 const b = parseInt(hex.slice(5, 7), 16);
                                 return `rgba(${r}, ${g}, ${b}, ${alpha})`;
                             };
-                            
+
                             // Collect unique labels (doses) with their colors
                             datasets.forEach((dataset, i) => {
                                 const label = dataset.label;
@@ -407,7 +407,7 @@ function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo
                                 if (label === 'Projected' || label === 'Smoothed' || label === 'Pre-jab') {
                                     return;
                                 }
-                                
+
                                 // Only add if we haven't seen this label before
                                 if (!uniqueLabels.has(label)) {
                                     const borderColor = dataset.borderColor;
@@ -422,7 +422,7 @@ function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo
                                     });
                                 }
                             });
-                            
+
                             // Also add the main weight dataset
                             const weightDataset = datasets.find(d => d.label && d.label.includes('kg'));
                             if (weightDataset) {
@@ -437,7 +437,7 @@ function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo
                                     index: datasets.indexOf(weightDataset)
                                 });
                             }
-                            
+
                             // Also add medication level dataset if present
                             const medDataset = datasets.find(d => d.label && d.label.includes('Medication'));
                             if (medDataset) {
@@ -452,7 +452,7 @@ function createChart(ctx, label, labels, data, movingAverageData = null, jabInfo
                                     index: datasets.indexOf(medDataset)
                                 });
                             }
-                            
+
                             return Array.from(uniqueLabels.values());
                         }
                     }
@@ -469,7 +469,7 @@ function createMultiLineChart(ctx, title, labels, datasets) {
     window.myCharts = window.myCharts || {};
 
     const colors = [main_color, secondary_color, thrid_color, fourth_color];
-    
+
     const chartDatasets = datasets.map((dataset, idx) => {
         const data = dataset.data.map((val, i) => ({
             x: new Date(labels[i].replace(' ', 'T') + ':00'),
