@@ -1,9 +1,3 @@
-from fastapi import FastAPI, Depends, HTTPException, Response, Cookie
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-import models
-from models import SessionLocal, engine
-from pydantic import BaseModel
 import datetime
 import os
 import secrets
@@ -12,6 +6,12 @@ import logging
 import bcrypt
 import hmac
 import time
+from fastapi import FastAPI, Depends, HTTPException, Response, Cookie
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+import models
+from models import SessionLocal, engine
+from pydantic import BaseModel
 from medication_calculator import calculate_medication_levels
 
 # Set up logging
