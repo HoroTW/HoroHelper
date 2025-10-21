@@ -129,6 +129,25 @@
     </div>
 
     <script>
+        // Check if user is already authenticated and redirect to home if so
+        async function checkExistingAuth() {
+            try {
+                const response = await fetch('/api/auth/me', {
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    // User is already logged in, redirect to home
+                    console.log('User already authenticated, redirecting to home');
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.log('Not authenticated, staying on login page');
+            }
+        }
+
+        // Check authentication on page load
+        checkExistingAuth();
+
         const loginForm = document.getElementById('loginForm');
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'horohelper-cache-v6'; // Incremented version for credentials fix
+const CACHE_NAME = 'horohelper-cache-v7'; // Incremented version for PWA login fix
 
 // Install a service worker
 self.addEventListener('install', event => {

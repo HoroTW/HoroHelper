@@ -203,7 +203,7 @@ def login(login_data: LoginRequest, response: Response, db: Session = Depends(ge
         value=token,
         httponly=True,
         secure=not IS_DEVELOPMENT,  # Allow cookies over HTTP in development
-        samesite="strict",
+        samesite="lax",  # Use "lax" instead of "strict" for better PWA compatibility
         max_age=60 * 60 * 24 * 360  # 360 days
     )
     return {
