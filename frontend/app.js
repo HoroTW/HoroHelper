@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const apiUrl = isLocal ? 'http://127.0.0.1:8000' : '';
 
     const ITEM_HEIGHT = 20; // Corresponds to .roller-item height in CSS
-    const ROLLER_HEIGHT = 55; // Corresponds to .roller height in CSS
+    const ROLLER_HEIGHT = 48; // Corresponds to .roller height in CSS
 
     let currentMode = 'health'; // 'health', 'jab', or 'measurements'
 
@@ -238,6 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', (event) => {
         event.preventDefault();
         messageEl.textContent = '';
+        messageEl.className = ''; // Reset classes
 
         let data = {};
 
@@ -270,9 +271,9 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const successMessages = {
-            health: 'Log saved successfully!',
-            jab: 'Jab saved successfully!',
-            measurements: 'Body measurements saved successfully!'
+            health: '✅ Log saved successfully!',
+            jab: '✅ Jab saved successfully!',
+            measurements: '✅ Body measurements saved successfully!'
         };
 
         fetch(`${apiUrl}${endpoints[currentMode]}`, {
@@ -286,16 +287,25 @@ document.addEventListener('DOMContentLoaded', () => {
             return response.json();
         })
         .then(savedData => {
-            messageEl.textContent = successMessages[currentMode];
-            messageEl.style.color = 'green';
+            showToast(successMessages[currentMode], 'success');
             console.log('Success:', savedData);
         })
         .catch(error => {
-            messageEl.textContent = `Failed to save ${currentMode}.`;
-            messageEl.style.color = 'red';
+            showToast(`❌ Failed to save ${currentMode}.`, 'error');
             console.error('Error:', error);
         });
     });
+
+    // Toast notification function
+    function showToast(message, type = 'success') {
+        messageEl.textContent = message;
+        messageEl.className = `show ${type}`;
+        
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            messageEl.classList.remove('show');
+        }, 3000);
+    }
 
     // Custom event to set roller value externally
     document.querySelectorAll('.roller').forEach(roller => {

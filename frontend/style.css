@@ -4,7 +4,7 @@ body {
     background-image: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
     color: #E2E8F0;
     margin: 0;
-    padding: 20px;
+    padding: 7px 20px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -35,7 +35,7 @@ h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
     gap: 20px; /* Add space between header items */
 }
 
@@ -304,7 +304,7 @@ tbody tr:hover {
 }
 
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: 5px;
     padding: 5px;
     border-radius: 8px;
     border: 0px solid #2D3748;
@@ -356,7 +356,7 @@ input:focus, textarea:focus {
 }
 
 .roller {
-    height: 55px; /* Reduced height */
+    height: 48px; /* Reduced height */
     width: 50px; /* Reduced width */
     overflow: hidden;
     position: relative;
@@ -439,9 +439,38 @@ button[type="submit"]:hover {
 }
 
 #message {
-    margin-top: 15px;
+    position: fixed;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 300px;
+    max-width: 90%;
+    padding: 16px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
     text-align: center;
-    font-size: 14px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+#message.show {
+    top: 30px;
+    opacity: 1;
+}
+
+#message.success {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+#message.error {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
 }
 
 .settings-container {
