@@ -3,7 +3,7 @@
 // Color scheme
 const main_color = '#805AD5';
 const secondary_color = '#D55A72';
-const thrid_color = '#AFD55A';
+const third_color = '#AFD55A';
 const fourth_color = '#5AD5BD';
 
 // Interpolate color based on jab dose using HSV
@@ -468,7 +468,7 @@ function createMultiLineChart(ctx, title, labels, datasets) {
     }
     window.myCharts = window.myCharts || {};
 
-    const colors = [main_color, secondary_color, thrid_color, fourth_color];
+    const colors = [main_color, secondary_color, third_color, fourth_color];
 
     const chartDatasets = datasets.map((dataset, idx) => {
         const data = dataset.data.map((val, i) => ({
